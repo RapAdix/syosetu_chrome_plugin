@@ -37,12 +37,83 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
     iframe.src = "about:blank";
     panel.appendChild(iframe);
 
+    // Initialize width to 50vw in pixels
+    const initialWidth = window.innerWidth / 2;
+    panel.style.width = `${initialWidth}px`;
+    document.body.style.marginRight = `${initialWidth}px`;
+
     document.body.appendChild(panel);
   }
 
   function updatePanel(word) {
-    const iframe = document.getElementById("jisho-iframe");
-    iframe.src = `https://jisho.org/search/${encodeURIComponent(word)}`;
+    const cacheKey = `jisho_cache_${word}`;
+
+    chrome.storage.local.get(["jisho_cache_list", cacheKey], (res) => {
+      const html = res[cacheKey];
+      const iframe = document.getElementById("jisho-iframe");
+
+      if (html) {
+        console.log("⚡ Loading from cache:", word);
+        iframe.srcdoc = html;
+        return;
+      }
+
+      console.log("🌐 Fetching from Jisho:", word);
+      fetch(`https://jisho.org/search/${encodeURIComponent(word)}`)
+        .then((response) => response.text())
+        .then((html) => {
+          iframe.srcdoc = html;
+          cacheResult(word, html);
+        })
+        .catch((err) => {
+          iframe.srcdoc = `<p>❌ Failed to load Jisho page.</p>`;
+          console.error(err);
+        });
+    });
+  }
+
+  function cacheResult(word, html) {
+    const cacheKey = `jisho_cache_${word}`;
+    const maxEntries = 50;
+
+    chrome.storage.local.get("jisho_cache_list", (res) => {
+      let list = res.jisho_cache_list || [];
+
+      // Remove word if already in list (we’ll re-add it at front)
+      list = list.filter((w) => w !== word);
+      list.unshift(word); // Add to front (most recent)
+
+      // Trim list if over size
+      if (list.length > maxEntries) {
+        const removed = list.slice(maxEntries);
+        const removeKeys = removed.map((w) => `jisho_cache_${w}`);
+        chrome.storage.local.remove(removeKeys);
+        list = list.slice(0, maxEntries);
+      }
+
+      // Store new HTML and updated list
+      chrome.storage.local.set({
+        [cacheKey]: html,
+        jisho_cache_list: list,
+      });
+    });
+
+    //For development size tracking
+    function getSizeInKB(str) {
+      return new Blob([str]).size / 1024;
+    }
+
+    chrome.storage.local.get(null, (items) => {
+      let totalKB = 0;
+
+      for (const [key, value] of Object.entries(items)) {
+        if (key.startsWith("jisho_cache_") && typeof value === "string") {
+          totalKB += getSizeInKB(value);
+        }
+      }
+
+      console.log(`📦 Estimated cache size: ${totalKB.toFixed(2)} KB`);
+    });
   }
 
   function removePanel() {
