@@ -4,7 +4,13 @@
   "version": "1.0",
   "description": "Search Jisho for selected Japanese words in a side panel.",
   "permissions": ["storage", "scripting"],
-  "host_permissions": ["*://jisho.org/*", "*://ncode.syosetu.com/*"],
+  "host_permissions": [
+    "*://jisho.org/*",
+    "*://ncode.syosetu.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_popup": "popup.html"
   },

@@ -34,13 +34,14 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
 
     const iframe = document.createElement("iframe");
     iframe.id = "jisho-iframe";
+    iframe.style.zoom = "0.9"; // because japanese characters are better a little bigger than latin
     iframe.src = "about:blank";
     panel.appendChild(iframe);
 
-    // Initialize width to 50vw in pixels
-    const initialWidth = window.innerWidth / 2;
+    // Initialize width to 45vw in pixels
+    const initialWidth = window.innerWidth * 0.45;
     panel.style.width = `${initialWidth}px`;
-    document.body.style.marginRight = `${initialWidth}px`;
+    document.body.style.marginRight = `${initialWidth - 30}px`; // because there is already some margin
 
     document.body.appendChild(panel);
   }
@@ -58,17 +59,16 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
         return;
       }
 
-      console.log("🌐 Fetching from Jisho:", word);
-      fetch(`https://jisho.org/search/${encodeURIComponent(word)}`)
-        .then((response) => response.text())
-        .then((html) => {
-          iframe.srcdoc = html;
-          cacheResult(word, html);
-        })
-        .catch((err) => {
-          iframe.srcdoc = `<p>❌ Failed to load Jisho page.</p>`;
-          console.error(err);
-        });
+      console.log("📡 Asking background to fetch:", word);
+      chrome.runtime.sendMessage({ type: "fetchJisho", word }, (response) => {
+        if (response?.html) {
+          iframe.srcdoc = response.html;
+          cacheResult(word, response.html);
+        } else {
+          iframe.srcdoc = `<p>❌ Failed to load Jisho: ${response?.error}</p>`;
+          console.error(response?.error);
+        }
+      });
     });
   }
 
