@@ -32,11 +32,34 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
     panel = document.createElement("div");
     panel.id = "jisho-panel";
 
+    // 🧭 Tab header
+    const tabBar = document.createElement("div");
+    tabBar.id = "jisho-tab-bar";
+    tabBar.innerHTML = `
+      <button class="tab-btn active" data-tab="jisho">Jisho</button>
+      <button class="tab-btn" data-tab="grammar">Grammar</button>
+    `;
+    panel.appendChild(tabBar);
+
+    // 📘 Jisho tab content
+    const jishoTab = document.createElement("div");
+    jishoTab.id = "jisho-tab";
+    jishoTab.className = "tab-content active";
     const iframe = document.createElement("iframe");
     iframe.id = "jisho-iframe";
     iframe.style.zoom = "0.9"; // because japanese characters are better a little bigger than latin
     iframe.src = "about:blank";
-    panel.appendChild(iframe);
+    jishoTab.appendChild(iframe);
+
+    // 📗 Grammar tab content
+    const grammarTab = document.createElement("div");
+    grammarTab.id = "grammar-tab";
+    grammarTab.className = "tab-content";
+    grammarTab.innerHTML = `<div id="chatgpt-response">Ask a grammar question!</div>`;
+
+    // Add both tabs
+    panel.appendChild(jishoTab);
+    panel.appendChild(grammarTab);
 
     // Initialize width to 45vw in pixels
     const initialWidth = window.innerWidth * 0.45;
@@ -44,6 +67,18 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
     document.body.style.marginRight = `${initialWidth - 30}px`; // because there is already some margin
 
     document.body.appendChild(panel);
+
+    // 🖱️ Add tab switch logic
+    panel.querySelectorAll(".tab-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        panel.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+        panel.querySelectorAll(".tab-content").forEach((tab) => tab.classList.remove("active"));
+
+        btn.classList.add("active");
+        const tabId = btn.dataset.tab;
+        panel.querySelector(`#${tabId}-tab`).classList.add("active");
+      });
+    });
   }
 
   function updatePanel(word) {
