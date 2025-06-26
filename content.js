@@ -91,7 +91,7 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
     const marked = lastSelection;
 
     const responseBox = document.getElementById("chatgpt-response");
-    responseBox.textContent = "💬 Asking ChatGPT...";
+    responseBox.textContent = "💬 Checking cache...";
 
     const cacheKey = `${sentence}|${marked}`;
     chrome.storage.local.get([cacheKey], (result) => {
@@ -99,18 +99,36 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
         console.log('⚡️ Cache hit. Returning cached response.');
         responseBox.textContent = result[cacheKey];
       } else {
-        console.log('❌ Cache miss. Sending request to API.');
-        chrome.runtime.sendMessage(
-          { type: "askChatGPT", sentence, marked },
-          (res) => {
-            responseBox.textContent = res?.reply || "⚠️ No response.";
-            if (res?.reply && res.reply !== "⚠️ No response from ChatGPT.") {
-              chrome.storage.local.set({ [cacheKey]: res.reply }, () => {
-                console.log('💾 Cached response for:', cacheKey);
-              });
+        console.log('❌ Cache miss. Waiting for user confirmation.');
+
+        // Create button
+        const askButton = document.createElement('button');
+        askButton.textContent = 'Ask ChatGPT';
+        askButton.id = 'ask-chatgpt-button';
+        askButton.style.marginTop = '10px';
+        responseBox.textContent = '❔ No cached response found.';
+        responseBox.appendChild(document.createElement('br'));
+        responseBox.appendChild(askButton);
+
+        // Autofocus button so Enter works immediately
+        askButton.focus();
+
+        askButton.addEventListener('click', () => {
+          askButton.disabled = true;
+          askButton.textContent = '💬 Asking ChatGPT...';
+
+          chrome.runtime.sendMessage(
+            { type: "askChatGPT", sentence, marked },
+            (res) => {
+              responseBox.textContent = res?.reply || "⚠️ No response.";
+              if (res?.reply && res.reply !== "⚠️ No response from ChatGPT.") {
+                chrome.storage.local.set({ [cacheKey]: res.reply }, () => {
+                  console.log('💾 Cached response for:', cacheKey);
+                });
+              }
             }
-          }
-        );
+          );
+        });
       }
     });
   }
