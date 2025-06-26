@@ -5,7 +5,6 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
 
   if (!jishoEnabled) return;
 
-  let lastSelection = "";
   let panel = null;
 
   console.log("👂 Listening for mouse selection");
@@ -16,13 +15,11 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
 
     if (
       selectedText &&
-      selectedText !== lastSelection &&
       selectedText.length <= 20
     ) {
-      lastSelection = selectedText;
       console.log("📦 Loading Jisho panel for:", selectedText);
       createPanel();
-      updateJishoPanel(selectedText);
+      updatePanel();
     }
   });
 
@@ -79,16 +76,28 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
         const tabId = btn.dataset.tab;
         panel.querySelector(`#${tabId}-tab`).classList.add("active");
 
-        if (tabId === "grammar" && lastSelection) {
-          updateGPTPanel();
-        }
+        updatePanel();
       });
     });
   }
 
+  function getActiveTab() {
+    const activeButton = document.querySelector('#jisho-tab-bar .tab-btn.active');
+    return activeButton ? activeButton.dataset.tab : null;
+  }
+
+  function updatePanel() {
+    if (getActiveTab() === 'jisho') {
+      updateJishoPanel();
+    } else if (getActiveTab() === 'grammar') {
+      updateGPTPanel();
+    }
+  }
+
   function updateGPTPanel() {
+    const marked = window.getSelection().toString().trim();
+    if (!marked) return;
     const sentence = getSentenceAroundSelection();
-    const marked = lastSelection;
 
     const responseBox = document.getElementById("chatgpt-response");
     responseBox.textContent = "💬 Checking cache...";
@@ -133,7 +142,9 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
     });
   }
 
-  function updateJishoPanel(word) {
+  function updateJishoPanel() {
+    const word = window.getSelection().toString().trim();
+    if (!word) return;
     const cacheKey = `jisho_cache_${word}`;
 
     chrome.storage.local.get(["jisho_cache_list", cacheKey], (res) => {
@@ -162,7 +173,7 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
   function getSentenceAroundSelection() {
     const selection = window.getSelection();
     const node = selection.anchorNode;
-    if (!node || !node.textContent) return lastSelection;
+    if (!node || !node.textContent) return selection.toString().trim();;
 
     const text = node.textContent;
     const index = selection.anchorOffset;
