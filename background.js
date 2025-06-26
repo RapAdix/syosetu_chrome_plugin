@@ -8,8 +8,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     const { sentence, marked } = message;
 
-    const prompt = `Explain the grammar of the marked part "${marked}" in this Japanese sentence:\n\n${sentence}`;
-    // const prompt = createPrompt(sentence, marked);
+    // const prompt = `Explain the grammar of the marked part "${marked}" in this Japanese sentence:\n\n${sentence}`;
+    const prompt = createPrompt(sentence, marked);
     
     console.log("📤 Sending request to OpenAI API...");
     console.log("📝 Prompt:", prompt);
@@ -69,30 +69,17 @@ function dedent(str) {
 
 function createPrompt(sentence, marked) {
   return dedent(`
-    I would like you to carefully analyze the following Japanese sentence for me:
-
+    In the following Japanese sentence:
     「${sentence}」
 
-    Please perform the following steps in detail:
-    1. **Focus on the word/phrase:** 「${marked}」
-      - Explain what it refers to in this sentence.
-      - Explain why this word is used instead of alternatives.
-      - Provide any cultural or pragmatic nuance it carries.
+    Focus only on the marked word: 「${marked}」
 
-    2. **Break down the sentence structure**:
-      - Identify and explain the function of each word or phrase.
-      - Clarify particles and their grammatical roles.
+    Please provide:
+    1. A brief explanation of its grammatical role and meaning.
+    2. Any nuance about why this specific word is used.
+    3. A natural English translation of the full sentence.
 
-    3. **Explain surrounding grammar:**
-      - Analyze the grammar patterns and explain their contribution to the sentence’s meaning and tone.
-      - Mention whether the sentence is formal, casual, or carries emotional undertones.
-
-    4. **Provide a natural, full English translation**:
-      - Make sure the translation reflects both the literal and emotional meaning.
-
-    5. **Optional: Additional nuance or context:**
-      - If the sentence could have different meanings depending on context, please explain the possible interpretations.
-
-    Please answer step-by-step and in detail, as if you are explaining to a student who is learning Japanese grammar at an intermediate level.
+    Be concise.
   `);
 }
+

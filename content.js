@@ -83,6 +83,7 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
           const marked = lastSelection;
 
           const responseBox = panel.querySelector("#chatgpt-response");
+          panel.style.whiteSpace = "pre-wrap";
           responseBox.textContent = "💬 Asking ChatGPT...";
 
           chrome.runtime.sendMessage(
