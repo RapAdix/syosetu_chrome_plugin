@@ -134,7 +134,7 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
     const before = text.slice(0, index).split(/(?<=[。！？\.\!\?])/).pop() || "";
     const after = text.slice(index).split(/[。！？\.\!\?]/)[0] || "";
 
-    return before + lastSelection + after;
+    return before + after;
   }
 
 
