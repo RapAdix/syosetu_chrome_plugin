@@ -77,6 +77,21 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
         btn.classList.add("active");
         const tabId = btn.dataset.tab;
         panel.querySelector(`#${tabId}-tab`).classList.add("active");
+
+        if (tabId === "grammar" && lastSelection) {
+          const sentence = getSentenceAroundSelection();
+          const marked = lastSelection;
+
+          const responseBox = panel.querySelector("#chatgpt-response");
+          responseBox.textContent = "💬 Asking ChatGPT...";
+
+          chrome.runtime.sendMessage(
+            { type: "askChatGPT", sentence, marked },
+            (res) => {
+              responseBox.textContent = res?.reply || "⚠️ No response.";
+            }
+          );
+        }
       });
     });
   }
@@ -106,6 +121,22 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
       });
     });
   }
+
+  function getSentenceAroundSelection() {
+    const selection = window.getSelection();
+    const node = selection.anchorNode;
+    if (!node || !node.textContent) return lastSelection;
+
+    const text = node.textContent;
+    const index = selection.anchorOffset;
+
+    // Simple sentence splitter: period, 。、！？
+    const before = text.slice(0, index).split(/(?<=[。！？\.\!\?])/).pop() || "";
+    const after = text.slice(index).split(/[。！？\.\!\?]/)[0] || "";
+
+    return before + lastSelection + after;
+  }
+
 
   function cacheResult(word, html) {
     const cacheKey = `jisho_cache_${word}`;
