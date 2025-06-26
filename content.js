@@ -22,7 +22,7 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
       lastSelection = selectedText;
       console.log("📦 Loading Jisho panel for:", selectedText);
       createPanel();
-      updatePanel(selectedText);
+      updateJishoPanel(selectedText);
     }
   });
 
@@ -55,6 +55,7 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
     const grammarTab = document.createElement("div");
     grammarTab.id = "grammar-tab";
     grammarTab.className = "tab-content";
+    grammarTab.style.whiteSpace = "pre-wrap";
     grammarTab.innerHTML = `<div id="chatgpt-response">Ask a grammar question!</div>`;
 
     // Add both tabs
@@ -79,25 +80,42 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
         panel.querySelector(`#${tabId}-tab`).classList.add("active");
 
         if (tabId === "grammar" && lastSelection) {
-          const sentence = getSentenceAroundSelection();
-          const marked = lastSelection;
-
-          const responseBox = panel.querySelector("#chatgpt-response");
-          panel.style.whiteSpace = "pre-wrap";
-          responseBox.textContent = "💬 Asking ChatGPT...";
-
-          chrome.runtime.sendMessage(
-            { type: "askChatGPT", sentence, marked },
-            (res) => {
-              responseBox.textContent = res?.reply || "⚠️ No response.";
-            }
-          );
+          updateGPTPanel();
         }
       });
     });
   }
 
-  function updatePanel(word) {
+  function updateGPTPanel() {
+    const sentence = getSentenceAroundSelection();
+    const marked = lastSelection;
+
+    const responseBox = document.getElementById("chatgpt-response");
+    responseBox.textContent = "💬 Asking ChatGPT...";
+
+    const cacheKey = `${sentence}|${marked}`;
+    chrome.storage.local.get([cacheKey], (result) => {
+      if (result[cacheKey]) {
+        console.log('⚡️ Cache hit. Returning cached response.');
+        responseBox.textContent = result[cacheKey];
+      } else {
+        console.log('❌ Cache miss. Sending request to API.');
+        chrome.runtime.sendMessage(
+          { type: "askChatGPT", sentence, marked },
+          (res) => {
+            responseBox.textContent = res?.reply || "⚠️ No response.";
+            if (res?.reply && res.reply !== "⚠️ No response from ChatGPT.") {
+              chrome.storage.local.set({ [cacheKey]: res.reply }, () => {
+                console.log('💾 Cached response for:', cacheKey);
+              });
+            }
+          }
+        );
+      }
+    });
+  }
+
+  function updateJishoPanel(word) {
     const cacheKey = `jisho_cache_${word}`;
 
     chrome.storage.local.get(["jisho_cache_list", cacheKey], (res) => {
