@@ -131,9 +131,10 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
             (res) => {
               responseBox.textContent = res?.reply || "⚠️ No response.";
               if (res?.reply && res.reply !== "⚠️ No response from ChatGPT.") {
-                chrome.storage.local.set({ [cacheKey]: res.reply }, () => {
-                  console.log('💾 Cached response for:', cacheKey);
-                });
+                safeSetToStorage({ [cacheKey]: res.reply }, 
+                  () => { console.log('💾 Cached response for:', cacheKey); }, 
+                  () => { alert('❌ Cache is full. Cannot save new response.'); }
+                );
               }
             }
           );
@@ -161,7 +162,7 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
       chrome.runtime.sendMessage({ type: "fetchJisho", word }, (response) => {
         if (response?.html) {
           iframe.srcdoc = response.html;
-          cacheResult(word, response.html);
+          cacheJishoResult(word, response.html);
         } else {
           iframe.srcdoc = `<p>❌ Failed to load Jisho: ${response?.error}</p>`;
           console.error(response?.error);
@@ -186,9 +187,8 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
   }
 
 
-  function cacheResult(word, html) {
+  function cacheJishoResult(word, html) {
     const cacheKey = `jisho_cache_${word}`;
-    const maxEntries = 50;
 
     chrome.storage.local.get("jisho_cache_list", (res) => {
       let list = res.jisho_cache_list || [];
@@ -197,19 +197,14 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
       list = list.filter((w) => w !== word);
       list.unshift(word); // Add to front (most recent)
 
-      // Trim list if over size
-      if (list.length > maxEntries) {
-        const removed = list.slice(maxEntries);
-        const removeKeys = removed.map((w) => `jisho_cache_${w}`);
-        chrome.storage.local.remove(removeKeys);
-        list = list.slice(0, maxEntries);
-      }
-
       // Store new HTML and updated list
-      chrome.storage.local.set({
-        [cacheKey]: html,
-        jisho_cache_list: list,
-      });
+      safeSetToStorage({
+          [cacheKey]: html,
+          jisho_cache_list: list,
+        },
+        () => { console.log('💾 Cached response for:', cacheKey); }, 
+        () => { alert('❌ Cache is full. Cannot save new response.'); }
+      );
     });
 
     //For development size tracking
@@ -229,6 +224,55 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
       console.log(`📦 Estimated cache size: ${totalKB.toFixed(2)} KB`);
     });
   }
+
+  function safeSetToStorage(data, onSuccess, onFailure, maxRetries = 2) {
+    attemptSet(data, onSuccess, onFailure, maxRetries);
+  }
+
+  function attemptSet(data, onSuccess, onFailure, remainingRetries) {
+    chrome.storage.local.set(data, () => {
+      if (chrome.runtime.lastError) {
+        console.warn(`⚠️ Storage write failed. Remaining retries: ${remainingRetries}`);
+
+        if (remainingRetries <= 0) {
+          console.error("❌ Failed to write even after trimming.");
+          if (onFailure) onFailure();
+          return;
+        }
+
+        trimJishoCache(() => {
+          attemptSet(data, onSuccess, onFailure, remainingRetries - 1);
+        });
+      } else {
+        console.log("✅ Successfully saved.");
+        if (onSuccess) onSuccess();
+      }
+    });
+  }
+
+  function trimJishoCache(callback) {
+    chrome.storage.local.get("jisho_cache_list", (res) => {
+      let list = res.jisho_cache_list || [];
+      if (list.length === 0) {
+        console.error("🚨 Jisho cache is already empty. Cannot trim further.");
+        alert("❗ Cache full and no Jisho entries to delete.");
+        if (callback) callback();
+        return;
+      }
+
+      // Remove the oldest entry
+      const wordToRemove = list.pop();
+      const cacheKeyToRemove = `jisho_cache_${wordToRemove}`;
+
+      chrome.storage.local.remove([cacheKeyToRemove], () => {
+        chrome.storage.local.set({ jisho_cache_list: list }, () => {
+          console.log(`🗑️ Removed oldest Jisho cache entry: ${wordToRemove}`);
+          if (callback) callback();
+        });
+      });
+    });
+  }
+
 
   function removePanel() {
     if (panel) {
