@@ -9,7 +9,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const { sentence, marked } = message;
 
     // const prompt = `Explain the grammar of the marked part "${marked}" in this Japanese sentence:\n\n${sentence}`;
-    const prompt = createPrompt(sentence, marked);
+    const prompt = marked
+      ? explainWordPrompt(sentence, marked)
+      : explainSentencePrompt(sentence);
     
     console.log("📤 Sending request to OpenAI API...");
     console.log("📝 Prompt:", prompt);
@@ -67,7 +69,7 @@ function dedent(str) {
     return str.replace(/^\s+/gm, '');
 }
 
-function createPrompt(sentence, marked) {
+function explainWordPrompt(sentence, marked) {
   return dedent(`
     In the following Japanese sentence:
     「${sentence}」
@@ -80,6 +82,18 @@ function createPrompt(sentence, marked) {
     3. A natural English translation of the full sentence.
 
     Be concise.
+  `);
+}
+
+function explainSentencePrompt(sentence) {
+  return dedent(`
+    Break down the following Japanese sentence into its grammar parts step-by-step. For each part, list:
+    - The Japanese phrase with romaji and grammatical function of each part (particle, adjective, potential/negative verb, etc.)
+    - Concise meaning in English
+
+    no headings, be to the point. In a structured list.
+
+    Sentence: 「${sentence}」
   `);
 }
 

@@ -9,7 +9,9 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
 
   console.log("👂 Listening for mouse selection");
 
-  document.addEventListener("mouseup", () => {
+  document.addEventListener("mouseup", (e) => {
+    if (e.target.closest("#jisho-panel")) return;
+
     const selectedText = window.getSelection().toString().trim();
     console.log("🖱️ Selected text:", selectedText);
 
@@ -102,45 +104,75 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
     const responseBox = document.getElementById("chatgpt-response");
     responseBox.textContent = "💬 Checking cache...";
 
-    const cacheKey = `${sentence}|${marked}`;
-    chrome.storage.local.get([cacheKey], (result) => {
-      if (result[cacheKey]) {
-        console.log('⚡️ Cache hit. Returning cached response.');
-        responseBox.textContent = result[cacheKey];
+    const explainWordKey = `explain_word|${sentence}|${marked}`;
+    const explainSentenceKey = `explain_sentence|${sentence}`;
+
+    chrome.storage.local.get([explainWordKey, explainSentenceKey], (result) => {
+      const wordResponse = result[explainWordKey];
+      const sentenceResponse = result[explainSentenceKey];
+
+      // Show word response if cached
+      if (wordResponse) {
+        responseBox.textContent = wordResponse;
+        if (sentenceResponse) {
+          responseBox.textContent += "\n" + sentenceResponse;
+        }
+      } else if (sentenceResponse) {
+        responseBox.textContent = sentenceResponse;
       } else {
         console.log('❌ Cache miss. Waiting for user confirmation.');
-
-        // Create button
-        const askButton = document.createElement('button');
-        askButton.textContent = 'Ask ChatGPT';
-        askButton.id = 'ask-chatgpt-button';
-        askButton.style.marginTop = '10px';
         responseBox.textContent = '❔ No cached response found.';
-        responseBox.appendChild(document.createElement('br'));
-        responseBox.appendChild(askButton);
+      }
 
-        // Autofocus button so Enter works immediately
-        askButton.focus();
+      // Create word button if not cached
+      if (!wordResponse) {
+        createAskButton("Ask about selected word", () => {
+          console.log("Ask about Word was pressed:", marked, "sentece:", sentence);
+          askAI(explainWordKey, sentence, marked);
+        });
+      }
 
-        askButton.addEventListener('click', () => {
-          askButton.disabled = true;
-          askButton.textContent = '💬 Asking ChatGPT...';
-
-          chrome.runtime.sendMessage(
-            { type: "askChatGPT", sentence, marked },
-            (res) => {
-              responseBox.textContent = res?.reply || "⚠️ No response.";
-              if (res?.reply && res.reply !== "⚠️ No response from ChatGPT.") {
-                safeSetToStorage({ [cacheKey]: res.reply }, 
-                  () => { console.log('💾 Cached response for:', cacheKey); }, 
-                  () => { alert('❌ Cache is full. Cannot save new response.'); }
-                );
-              }
-            }
-          );
+      // Create sentence button if not cached
+      if (!sentenceResponse) {
+        createAskButton("Ask about whole sentence", () => {
+          console.log("Ask about Sentence was pressed:", sentence);
+          askAI(explainSentenceKey, sentence, null);
         });
       }
     });
+  }
+
+  function createAskButton(label, onClick) {
+    const button = document.createElement('button');
+    button.textContent = label;
+    button.style.margin = '5px';
+    button.addEventListener('click', () => {
+      button.disabled = true;
+      button.textContent = '💬 Asking...';
+      onClick();
+    });
+    document.getElementById("chatgpt-response").appendChild(document.createElement('br'));
+    document.getElementById("chatgpt-response").appendChild(button);
+  }
+
+  function askAI(cacheKey, sentence, marked) {
+    chrome.runtime.sendMessage(
+      { type: "askChatGPT", sentence, marked },
+      (res) => {
+        const responseBox = document.getElementById("chatgpt-response");
+
+        if (res?.reply && res.reply !== "⚠️ No response from ChatGPT.") {
+          safeSetToStorage({ [cacheKey]: res.reply }, 
+            () => { console.log('💾 Cached response for:', cacheKey); }, 
+            () => { alert('❌ Cache is full. Cannot save new response.'); }
+          );
+          updateGPTPanel();
+        } else {
+          responseBox.appendChild(document.createElement("br"));
+          responseBox.appendChild(document.createTextNode("⚠️ No response."));
+        }
+      }
+    );
   }
 
   function updateJishoPanel() {
