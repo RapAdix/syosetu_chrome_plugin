@@ -99,7 +99,7 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
   function updateGPTPanel() {
     const marked = window.getSelection().toString().trim();
     if (!marked) return;
-    const sentence = getSentenceAroundSelection();
+    const {sentence, index} = getSentenceAroundSelection();
 
     const responseBox = document.getElementById("chatgpt-response");
     responseBox.textContent = "💬 Checking cache...";
@@ -128,7 +128,7 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
       if (!wordResponse) {
         createAskButton("Ask about selected word", () => {
           console.log("Ask about Word was pressed:", marked, "sentece:", sentence);
-          askAI(explainWordKey, sentence, marked);
+          askAI(explainWordKey, sentence, marked, index);
         });
       }
 
@@ -136,7 +136,7 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
       if (!sentenceResponse) {
         createAskButton("Ask about whole sentence", () => {
           console.log("Ask about Sentence was pressed:", sentence);
-          askAI(explainSentenceKey, sentence, null);
+          askAI(explainSentenceKey, sentence, null, null);
         });
       }
     });
@@ -155,9 +155,9 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
     document.getElementById("chatgpt-response").appendChild(button);
   }
 
-  function askAI(cacheKey, sentence, marked) {
+  function askAI(cacheKey, sentence, marked, index) {
     chrome.runtime.sendMessage(
-      { type: "askChatGPT", sentence, marked },
+      { type: "askChatGPT", sentence, marked, index },
       (res) => {
         const responseBox = document.getElementById("chatgpt-response");
 
@@ -215,7 +215,7 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
     const before = text.slice(0, index).split(/(?<=[。！？\.\!\?])/).pop() || "";
     const after = text.slice(index).split(/[。！？\.\!\?]/)[0] || "";
 
-    return before + after;
+    return {sentence: before + after, index: before.length};
   }
 
 

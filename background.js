@@ -6,11 +6,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log("📌 Full sentence:", message.sentence);
     console.log("🔍 Marked part:", message.marked);
 
-    const { sentence, marked } = message;
+    const { sentence, marked, index } = message;
 
     // const prompt = `Explain the grammar of the marked part "${marked}" in this Japanese sentence:\n\n${sentence}`;
     const prompt = marked
-      ? explainWordPrompt(sentence, marked)
+      ? explainWordPrompt(sentence, marked, index)
       : explainSentencePrompt(sentence);
     
     console.log("📤 Sending request to OpenAI API...");
@@ -69,12 +69,12 @@ function dedent(str) {
     return str.replace(/^\s+/gm, '');
 }
 
-function explainWordPrompt(sentence, marked) {
+function explainWordPrompt(sentence, marked, index) {
   return dedent(`
     In the following Japanese sentence:
     「${sentence}」
 
-    Focus only on the marked word: 「${marked}」
+    Focus only on the marked word: 「${marked}」 at index: ${index}
 
     Please provide:
     1. A brief explanation of its grammatical role and meaning.
