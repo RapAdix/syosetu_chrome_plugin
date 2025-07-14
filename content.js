@@ -255,14 +255,14 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
     });
   }
 
-  function safeSetToStorage(data, onSuccess, onFailure, maxRetries = 2) {
+  function safeSetToStorage(data, onSuccess, onFailure, maxRetries = 3) {
     attemptSet(data, onSuccess, onFailure, maxRetries);
   }
 
   function attemptSet(data, onSuccess, onFailure, remainingRetries) {
     chrome.storage.local.set(data, () => {
       if (chrome.runtime.lastError) {
-        console.warn(`⚠️ Storage write failed. Remaining retries: ${remainingRetries}`);
+        console.info(`⚠️ Storage write failed. Remaining retries: ${remainingRetries}`);
 
         if (remainingRetries <= 0) {
           console.error("❌ Failed to write even after trimming.");
@@ -278,8 +278,8 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
               const cacheKey = keys.find(key => key !== 'jisho_cache_list');
 
               // Remove word if already in list (we’ll re-add it at front)
-              list = list.filter((w) => w !== data[cacheKey]);
-              list.unshift(data[cacheKey]); // Add to front (most recent)
+              list = list.filter((w) => w !== cacheKey);
+              list.unshift(cacheKey); // Add to front (most recent)
               data.jisho_cache_list = list;
               attemptSet(data, onSuccess, onFailure, remainingRetries - 1);
             });
@@ -307,7 +307,7 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
       // Remove the oldest entry
       const cacheKeyToRemove = list.pop();
 
-      chrome.storage.local.remove([cacheKeyToRemove], () => {
+      chrome.storage.local.remove(cacheKeyToRemove, () => {
         chrome.storage.local.set({ jisho_cache_list: list }, () => {
           console.log(`🗑️ Removed oldest Jisho cache entry: ${cacheKeyToRemove}`);
           if (callback) callback();
