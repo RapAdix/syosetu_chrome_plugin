@@ -14,10 +14,10 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
   document.addEventListener("selectionchange", () => {
     if (selectionTimeout) clearTimeout(selectionTimeout);
 
-    // Wait 1000ms after last selection event before handling
+    // Wait 800ms after last selection event before handling
     selectionTimeout = setTimeout(() => {
       handleTextSelection("📱 Mobile/Touch selection:");
-    }, 1000);
+    }, 800);
   });
 
   console.log("👂 Listening for mouse selection");
@@ -212,7 +212,9 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
       console.log("📡 Asking background to fetch:", word);
       chrome.runtime.sendMessage({ type: "fetchJisho", word }, (response) => {
         if (response?.html) {
-          iframe.srcdoc = response.html;
+          if (word === window.getSelection().toString().trim()) {
+            iframe.srcdoc = response.html;
+          }
           cacheJishoResult(cacheKey, response.html);
         } else {
           iframe.srcdoc = `<p>❌ Failed to load Jisho: ${response?.error}</p>`;
