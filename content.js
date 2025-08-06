@@ -7,14 +7,32 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
 
   let panel = null;
 
+  let selectionTimeout = null;
+
+  console.log("👂 Listening for selection change");
+
+  document.addEventListener("selectionchange", () => {
+    if (selectionTimeout) clearTimeout(selectionTimeout);
+
+    // Wait 1000ms after last selection event before handling
+    selectionTimeout = setTimeout(() => {
+      handleTextSelection("📱 Mobile/Touch selection:");
+    }, 1000);
+  });
+
   console.log("👂 Listening for mouse selection");
 
   document.addEventListener("mouseup", (e) => {
     if (e.target.closest("#jisho-panel")) return;
 
-    const selectedText = window.getSelection().toString().trim();
-    console.log("🖱️ Selected text:", selectedText);
+    if (selectionTimeout) clearTimeout(selectionTimeout);
+    handleTextSelection("🖱️ Mouse selected text:");
+  });
 
+  function handleTextSelection(description) {
+    const selectedText = window.getSelection().toString().trim();
+    console.log(description, selectedText);
+    
     if (
       selectedText &&
       selectedText.length <= 20
@@ -23,7 +41,7 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
       createPanel();
       updatePanel();
     }
-  });
+  }
 
   function createPanel() {
     if (panel) return;
@@ -48,6 +66,7 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
     iframe.id = "jisho-iframe";
     iframe.style.zoom = "0.9"; // because japanese characters are better a little bigger than latin
     iframe.src = "about:blank";
+    iframe.sandbox = "allow-scripts allow-same-origin";
     jishoTab.appendChild(iframe);
 
     // 📗 Grammar tab content
