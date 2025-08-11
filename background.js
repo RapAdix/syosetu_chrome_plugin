@@ -79,7 +79,7 @@ function explainWordPrompt(sentence, marked, index) {
     Please provide:
     1. A brief explanation of its grammatical role and meaning.
     2. Any nuance about why this specific word is used.
-    3. A natural English translation of the full sentence.
+    3. A natural English translation of the full sentence, that preserves the original modifier/syntactic relationships.
 
     Be concise.
   `);
