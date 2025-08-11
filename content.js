@@ -1,5 +1,13 @@
 console.log("✅ Jisho content script loaded");
 
+const IS_TOUCH_DEVICE = navigator.maxTouchPoints > 0;
+
+if (IS_TOUCH_DEVICE) {
+  console.log("📱 Mobile device detected");
+} else {
+  console.log("💻 PC detected");
+}
+
 chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
   console.log("🔧 jishoEnabled =", jishoEnabled);
 
@@ -66,7 +74,11 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
     iframe.id = "jisho-iframe";
     iframe.style.zoom = "0.9"; // because japanese characters are better a little bigger than latin
     iframe.src = "about:blank";
-    iframe.sandbox = "allow-scripts allow-same-origin";
+    if (IS_TOUCH_DEVICE) { // autofocus on iframe needs to be suppressed
+      iframe.sandbox = "allow-scripts";
+    } else {
+      iframe.sandbox = "allow-scripts allow-same-origin";
+    }
     jishoTab.appendChild(iframe);
 
     // 📗 Grammar tab content
