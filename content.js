@@ -86,7 +86,7 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
     grammarTab.id = "grammar-tab";
     grammarTab.className = "tab-content";
     grammarTab.style.whiteSpace = "pre-wrap";
-    grammarTab.innerHTML = `<div id="chatgpt-response">Ask a grammar question!</div>`;
+    grammarTab.innerHTML =`<div id="chatgpt-response">Ask a grammar question!</div><div id="cached-words"></div>`;
 
     // Add both tabs
     panel.appendChild(jishoTab);
@@ -132,10 +132,11 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
     if (!marked) return;
     const {sentence, index} = getSentenceAroundSelection();
 
+    document.getElementById("cached-words").innerHTML="";
     const responseBox = document.getElementById("chatgpt-response");
     responseBox.textContent = "💬 Checking cache...";
 
-    const explainWordKey = `explain_word|${sentence}|${marked}`;
+    const explainWordKey = `explain_word|${sentence}|${marked}|${index}`;
     const explainSentenceKey = `explain_sentence|${sentence}`;
 
     chrome.storage.local.get([explainWordKey, explainSentenceKey], (result) => {
@@ -152,7 +153,7 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
         responseBox.textContent = sentenceResponse;
       } else {
         console.log('❌ Cache miss. Waiting for user confirmation.');
-        responseBox.textContent = '❔ No cached response found.';
+        responseBox.textContent = `❔ No cached response found for ${marked}.`;
       }
 
       // Create word button if not cached
@@ -170,8 +171,40 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
           askAI(explainSentenceKey, sentence, null, null);
         });
       }
+
+      if (!wordResponse) {
+        chrome.storage.local.get(null, (items) => {
+          const keysForSentence = Object.keys(items)
+            .filter(k => k.startsWith(`explain_word|${sentence}|`));
+
+          // Each key encodes: sentence | word | index
+          const cachedWords = keysForSentence.map(k => {
+            const [, , word, index] = k.split("|");
+            return { word, index: parseInt(index), reply: items[k] };
+          }).sort((a, b) => a.index - b.index);
+
+          if (keysForSentence?.length) {
+            showCachedWords(cachedWords);
+          }
+        });
+      }
     });
   }
+
+  function showCachedWords(cachedWords) {
+    const container = document.getElementById("cached-words");
+    container.innerHTML = "<p>📚 Cached words:</p>";
+
+    cachedWords.forEach(({word, reply, index}) => {
+      const btn = document.createElement("button");
+      btn.textContent = `${word} (${index})`;
+      btn.addEventListener("click", () => {
+        document.getElementById("chatgpt-response").textContent = reply;
+      });
+      container.appendChild(btn);
+    });
+  }
+
 
   function createAskButton(label, onClick) {
     const button = document.createElement('button');
