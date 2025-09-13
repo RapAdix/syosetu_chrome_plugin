@@ -22,11 +22,14 @@ Select any Japanese word or phrase, and get instant dictionary results plus gram
 
 ## How to Use
 
-1. Install or load the extension in Chrome (unpacked or via the Web Store)  
-2. Visit [https://syosetu.com](https://syosetu.com) and select any Japanese word or phrase  
-3. The side panel will appear with dictionary results under the “Jisho” tab  
-4. Switch to the “Grammar” tab to get grammar explanations or ask ChatGPT about the word or full sentence  
-5. Use the buttons to send new queries if needed — results will be cached for faster access later  
+1. In the unpacked files rename secrets.sample.js to secrets.js
+2. If you want to use the grammar feature please provide there your OpenAI API key.
+3. Load the extension in Chrome.
+4. Customize side panel size and jisho/grammar responses size in extension popup-settings.
+5. Visit [https://syosetu.com](https://syosetu.com) and select any Japanese word or phrase  
+6. The side panel will appear with dictionary results under the “Jisho” tab  
+7. Switch to the “Grammar” tab to ask ChatGPT about the word or full sentence  
+8. Use the buttons to send new queries if needed — results will be cached for access later  
 
 ---
 
