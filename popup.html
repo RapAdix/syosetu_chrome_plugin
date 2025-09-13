@@ -1,17 +1,44 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="UTF-8">
-  <title>Jisho Helper</title>
-</head>
-<body>
-  <label>
-    <input type="checkbox" id="toggleSwitch" />
-    Enable Jisho Panel
-  </label>
-  <br />
-  <button id="clearCacheButton">Clear Cache</button>
-  <div id="statusMessage"></div>
-  <script src="popup.js"></script>
-</body>
+  <head>
+    <title>Jisho Helper</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <label>
+      <input type="checkbox" id="toggleSwitch" />
+      Enable Jisho Helper
+    </label>
+
+    <div>
+      <label>
+        Panel width (% of view): 
+        <input type="number" id="panelWidthInput" min="10" max="90">
+      </label>
+    </div>
+
+    <div>
+      <label>
+        Jisho content scale (%): 
+        <input type="number" id="jishoScaleInput" min="50" max="200">
+      </label>
+    </div>
+
+    <div>
+      <label>
+        Grammar content scale (%): 
+        <input type="number" id="grammarScaleInput" min="50" max="200">
+      </label>
+    </div>
+
+    <div style="margin-top: 10px;">
+      <button id="clearCacheButton">Clear Cache</button>
+      <button id="resetSettingsButton">Reset Settings</button>
+    </div>
+
+    <div id="statusMessage"></div>
+
+    <script src="defaults.js"></script>
+    <script src="popup.js"></script>
+  </body>
 </html>

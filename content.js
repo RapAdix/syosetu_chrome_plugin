@@ -1,5 +1,7 @@
 console.log("✅ Jisho content script loaded");
 
+const DEFAULTS = window.JishoDefaults;
+
 const IS_TOUCH_DEVICE = navigator.maxTouchPoints > 0;
 
 if (IS_TOUCH_DEVICE) {
@@ -8,7 +10,7 @@ if (IS_TOUCH_DEVICE) {
   console.log("💻 PC detected");
 }
 
-chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
+chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
   console.log("🔧 jishoEnabled =", jishoEnabled);
 
   if (!jishoEnabled) return;
@@ -72,7 +74,6 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
     jishoTab.className = "tab-content active";
     const iframe = document.createElement("iframe");
     iframe.id = "jisho-iframe";
-    iframe.style.zoom = "0.9"; // because japanese characters are better a little bigger than latin
     iframe.src = "about:blank";
     if (IS_TOUCH_DEVICE) { // autofocus on iframe needs to be suppressed
       iframe.sandbox = "allow-scripts";
@@ -92,10 +93,22 @@ chrome.storage.sync.get("jishoEnabled", ({ jishoEnabled }) => {
     panel.appendChild(jishoTab);
     panel.appendChild(grammarTab);
 
-    // Initialize width to 45vw in pixels
-    const initialWidth = window.innerWidth * 0.45;
-    panel.style.width = `${initialWidth}px`;
-    document.body.style.marginRight = `${initialWidth - 30}px`; // because there is already some margin
+     // ✅ Load user preferences for width & font scale
+    chrome.storage.local.get(["panelWidth", "jishoContentScale", "grammarContentScale"], (data) => {
+      const panelWidth = data.panelWidth ?? DEFAULTS.panelWidth;
+      const jishoScale = data.jishoContentScale ?? DEFAULTS.jishoContentScale;
+      const grammarScale = data.grammarContentScale ?? DEFAULTS.grammarContentScale;
+      
+      console.log("Readed loaded:", {panelWidth, jishoScale, grammarScale});
+
+      const widthPx = (window.innerWidth * panelWidth) / 100;
+      panel.style.width = `${widthPx}px`;
+      document.body.style.marginRight = `${widthPx - 30}px`; // because there is already some margin
+
+      // Apply font scaling
+      iframe.style.zoom = `${jishoScale / 100}`;
+      grammarTab.style.zoom = `${grammarScale / 100}`;
+    });
 
     document.body.appendChild(panel);
 
