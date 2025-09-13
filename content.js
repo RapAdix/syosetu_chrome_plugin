@@ -395,17 +395,31 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
     });
   }
 
-
-  function removePanel() {
-    if (panel) {
-      panel.remove();
-      panel = null;
-    }
-  }
-
-  chrome.storage.onChanged.addListener((changes) => {
-    if (changes.jishoEnabled?.newValue === false) {
-      removePanel();
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === "local") {
+      if (changes.panelWidth) {
+        const newWidth = changes.panelWidth.newValue ?? window.JishoDefaults.panelWidth;
+        const panel = document.getElementById("jisho-panel");
+        if (panel) {
+          const widthPx = (window.innerWidth * newWidth) / 100;
+          panel.style.width = `${widthPx}px`
+        }
+      }
+      if (changes.jishoContentScale) {
+        const newScale = changes.jishoContentScale.newValue ?? DEFAULTS.jishoContentScale;
+        const iframe = document.getElementById("jisho-iframe");
+        if (iframe) {
+          iframe.style.zoom = newScale / 100;
+        }
+      }
+      if (changes.grammarContentScale) {
+        const newScale = changes.grammarContentScale.newValue ?? DEFAULTS.grammarContentScale;
+        const grammarTab = document.getElementById("grammar-tab");
+        if (grammarTab) {
+          grammarTab.style.zoom = newScale / 100;
+        }
+      }
     }
   });
+
 });
