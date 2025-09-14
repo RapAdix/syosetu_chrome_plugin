@@ -395,6 +395,19 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
     });
   }
 
+  function changeStyleZoom(element, newScale) {
+    if (element) {
+      if (!IS_TOUCH_DEVICE) { // Because this does not work for Android
+        element.style.zoom = newScale / 100;
+      } else {
+        element.style.transform = `scale(${newScale / 100})`;
+        element.style.transformOrigin = "top left";
+        element.style.width = `${100 * 100 / newScale}%`;
+        element.style.height = `${100 * 100 / newScale}%`;
+      }
+    }
+  }
+
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName === "local") {
       if (changes.panelWidth) {
@@ -408,16 +421,12 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
       if (changes.jishoContentScale) {
         const newScale = changes.jishoContentScale.newValue ?? DEFAULTS.jishoContentScale;
         const iframe = document.getElementById("jisho-iframe");
-        if (iframe) {
-          iframe.style.zoom = newScale / 100;
-        }
+        changeStyleZoom(iframe, newScale);
       }
       if (changes.grammarContentScale) {
         const newScale = changes.grammarContentScale.newValue ?? DEFAULTS.grammarContentScale;
         const grammarTab = document.getElementById("grammar-tab");
-        if (grammarTab) {
-          grammarTab.style.zoom = newScale / 100;
-        }
+        changeStyleZoom(grammarTab, newScale);
       }
     }
   });
