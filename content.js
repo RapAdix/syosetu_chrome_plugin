@@ -106,8 +106,8 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
       document.body.style.marginRight = `${widthPx - 30}px`; // because there is already some margin
 
       // Apply font scaling
-      iframe.style.zoom = `${jishoScale / 100}`;
-      grammarTab.style.zoom = `${grammarScale / 100}`;
+      changeStyleZoom(iframe, jishoScale);
+      changeStyleZoom(grammarTab, grammarScale);
     });
 
     document.body.appendChild(panel);
