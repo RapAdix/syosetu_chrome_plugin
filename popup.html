@@ -5,38 +5,86 @@
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
-    <label>
-      <input type="checkbox" id="toggleSwitch" />
-      Enable Jisho Helper
-    </label>
-
-    <div>
+    <div id="mainMenu">
       <label>
-        Panel width (% of view): 
-        <input type="number" id="panelWidthInput" min="10" max="90">
+        <input type="checkbox" id="toggleSwitch" />
+        Enable Jisho Helper
       </label>
-    </div>
 
-    <div>
-      <label>
-        Jisho content scale (%): 
-        <input type="number" id="jishoScaleInput" min="50" max="200">
-      </label>
-    </div>
+      <div>
+        <label>
+          Panel width (% of view): 
+          <input type="number" id="panelWidthInput" min="10" max="90">
+        </label>
+      </div>
 
-    <div>
-      <label>
-        Grammar content scale (%): 
-        <input type="number" id="grammarScaleInput" min="50" max="200">
-      </label>
-    </div>
+      <div>
+        <label>
+          Jisho content scale (%): 
+          <input type="number" id="jishoScaleInput" min="50" max="200">
+        </label>
+      </div>
 
-    <div style="margin-top: 10px;">
-      <button id="clearCacheButton">Clear Cache</button>
-      <button id="resetSettingsButton">Reset Settings</button>
-    </div>
+      <div>
+        <label>
+          Grammar content scale (%): 
+          <input type="number" id="grammarScaleInput" min="50" max="200">
+        </label>
+      </div>
 
-    <div id="statusMessage"></div>
+      <div style="margin-top: 10px;">
+        <button id="clearCacheButton">Clear Cache</button>
+        <button id="resetSettingsButton">Reset Settings</button>
+        <button id="apiSettingsButton">Api Keys settings</button>
+      </div>
+      <div id="statusMessage"></div>
+
+    </div>
+    
+    <div id="apiSettings" style="display:none;">
+      <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      />
+      <button id="backToMainButton"><i class="fa fa-arrow-left"></i> Back</button>
+
+      <h3>API Keys</h3>
+      <div>
+        <label>OpenAI Key:</label>
+        <div style="position: relative; margin-top: 5px;">
+          <input type="password" id="openaiApiKey" placeholder="sk-..." style="padding-right: 35px;"/>
+          <button type="button" id="toggleOpenaiKey" 
+                  style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
+                        background: transparent; border: none; cursor: pointer; padding: 5px;">
+            <i class="fa fa-eye"></i>
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <label>Gemini Key:</label>
+        <div style="position: relative; margin-top: 5px;">
+          <input type="password" id="geminiApiKey" placeholder="..." style="padding-right: 35px;"/>
+          <button type="button" id="toggleGeminiKey" 
+                  style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
+                        background: transparent; border: none; cursor: pointer; padding: 5px;">
+            <i class="fa fa-eye"></i>
+          </button>
+        </div>
+      </div>
+
+
+      <div>
+        <label>Use provider:</label>
+        <select id="providerSelect">
+          <option value="openai">OpenAI</option>
+          <option value="gemini">Gemini</option>
+        </select>
+      </div>
+
+      <button id="saveKeys">Save Keys</button>
+      <p id="apiKeyStatus"></p>
+    </div>
 
     <script src="defaults.js"></script>
     <script src="popup.js"></script>
