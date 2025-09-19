@@ -234,19 +234,19 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
 
   function askAI(cacheKey, sentence, marked, index) {
     chrome.runtime.sendMessage(
-      { type: "askChatGPT", sentence, marked, index },
+      { type: "askAI", sentence, marked, index },
       (res) => {
         const responseBox = document.getElementById("chatgpt-response");
 
-        if (res?.reply && res.reply !== "⚠️ No response from ChatGPT.") {
+        if (res.ok) {
           safeSetToStorage({ [cacheKey]: res.reply }, 
             () => { console.log('💾 Cached response for:', cacheKey); }, 
             () => { alert('❌ Cache is full. Cannot save new response.'); }
           );
           updateGPTPanel();
         } else {
-          responseBox.appendChild(document.createElement("br"));
-          responseBox.appendChild(document.createTextNode("⚠️ No response."));
+          responseBox.prepend(document.createElement("br"));
+          responseBox.prepend(document.createTextNode(res.reply));
         }
       }
     );

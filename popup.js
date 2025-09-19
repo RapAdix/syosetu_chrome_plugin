@@ -126,6 +126,37 @@ toggleGeminiInputBtn.addEventListener("click", () => {
   toggleMask(geminiApiKeyInput, toggleGeminiInputBtn)
 });
 
+const providerSelect = document.getElementById("providerSelect");
+
+// Clear any existing options
+providerSelect.innerHTML = "";
+
+// Populate options from Providers object
+for (const [key, value] of Object.entries(window.Providers)) {
+  const option = document.createElement("option");
+  option.value = value;
+  option.textContent = key; // display name
+  providerSelect.appendChild(option);
+}
+
+chrome.storage.local.get("providerAI", ({ providerAI }) => {
+  if (providerAI) {
+    providerSelect.value = providerAI;
+  } else {
+    providerSelect.value = PROVIDERS.openAI; // default
+    chrome.storage.local.set({ providerAI: PROVIDERS.openAI });
+  }
+});
+
+// Save providerAI when changed
+providerSelect.addEventListener("change", () => {
+  const selected = providerSelect.value;
+  chrome.storage.local.set({ providerAI: selected }, () => {
+    console.log("✅ providerAI saved:", selected);
+  });
+});
+
+
 // ------------ Settings navigation ------------
 
 const apiSettingsButton = document.getElementById("apiSettingsButton");

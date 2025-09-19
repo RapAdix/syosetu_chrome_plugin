@@ -1,3 +1,8 @@
+const PROVIDERS = {
+  openAI: "openai",
+  gemini: "gemini"
+};
+
 // Make it global for non-module scripts
 if (typeof window !== "undefined") {
   window.JishoDefaults = {
@@ -5,4 +10,6 @@ if (typeof window !== "undefined") {
     jishoContentScale: 90,    // %
     grammarContentScale: 100  // %
   };
+
+  window.Providers = PROVIDERS;
 }
