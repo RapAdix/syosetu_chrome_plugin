@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Jisho Helper",
+  "name": "Japanese Reading Assistant - Jisho in Side Panel",
   "version": "1.0",
-  "description": "Search Jisho for selected Japanese words in a side panel.",
+  "description": "Quickly look up Japanese words with Jisho in a side panel. Highlight text to get dictionary results, and grammar help.",
   "permissions": ["storage", "scripting"],
   "host_permissions": [
     "*://jisho.org/*",
