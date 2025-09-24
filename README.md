@@ -38,6 +38,13 @@ Select any Japanese word or phrase, and get instant dictionary results plus gram
 
 ---
 
+## Privacy
+
+Your API keys and recent queries are stored **only on your device**; nothing is collected or shared.  
+See [PRIVACY.md](./PRIVACY.md) for details.
+
+---
+
 ## License
 
 This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.
