@@ -3,7 +3,7 @@
   "name": "Japanese Reading Assistant - Jisho in Side Panel",
   "version": "1.0",
   "description": "Quickly look up Japanese words with Jisho in a side panel. Highlight text to get dictionary results, and grammar help.",
-  "permissions": ["storage", "scripting"],
+  "permissions": ["storage"],
   "host_permissions": [
     "*://jisho.org/*",
     "*://ncode.syosetu.com/*"
