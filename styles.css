@@ -52,3 +52,60 @@
   font-size: 14px;
   overflow-y: auto;
 }
+
+.switch-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  cursor: pointer;
+  font-family: sans-serif;
+  user-select: none;
+}
+
+/* Hide the default checkbox */
+.switch input {
+  display: none;
+}
+
+/* The "track" of the toggle */
+.slider {
+  position: relative;
+  width: 26px;   /* ← toggle width */
+  height: 15px;  /* ← toggle height */
+  background-color: #ccc;
+  border-radius: 20px;
+  transition: background-color 0.3s;
+}
+
+/* The "knob" */
+.slider::before {
+  content: "";
+  position: absolute;
+  width: 11px;   /* ← knob diameter */
+  height: 11px;
+  left: 2px;     /* ← knob padding */
+  bottom: 2px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.3s;
+}
+
+/* Checked (ON) state */
+input:checked + .slider {
+  background-color: #4CAF50;
+}
+
+input:checked + .slider::before {
+  transform: translateX(11px); /* ← knob travel distance */
+}
+
+.settings-group {
+  margin-bottom: 15px;
+}
+

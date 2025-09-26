@@ -16,7 +16,7 @@
 
 const DEFAULTS = window.JishoDefaults;
 
-const toggle = document.getElementById("toggleSwitch");
+const toggle = document.getElementById("jishoSwitch");
 const clearCacheButton = document.getElementById("clearCacheButton");
 const statusMessage = document.getElementById("statusMessage");
 
@@ -35,19 +35,51 @@ chrome.storage.local.get(["jishoEnabled", "panelWidth", "jishoContentScale", "gr
 });
 
 toggle.addEventListener("change", () => {
-  chrome.storage.local.set({ jishoEnabled: toggle.checked });
+  safeSetToStorage({ jishoEnabled: toggle.checked });
 });
 
 // Save local settings when inputs change
 [panelWidthInput, jishoScaleInput, grammarScaleInput].forEach(input => {
   input.addEventListener("input", () => {
-    chrome.storage.local.set({
+    safeSetToStorage({
       panelWidth: parseInt(panelWidthInput.value, 10),
       jishoContentScale: parseInt(jishoScaleInput.value, 10),
       grammarContentScale: parseInt(grammarScaleInput.value, 10),
     });
   });
 });
+
+// ---------------- TOGGLE SITE ----------------
+
+document.addEventListener("DOMContentLoaded", () => {
+  const checkbox = document.getElementById("toggleSite");
+
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    console.log(tabs);
+    const url = new URL(tabs[0].url);
+    const host = url.hostname;
+
+    chrome.storage.local.get({ allowedSites: [] }, (result) => {
+      let sites = result.allowedSites;
+
+      // Set initial checkbox state
+      checkbox.checked = sites.includes(host);
+
+      checkbox.addEventListener("change", () => {
+        if (checkbox.checked) {
+          if (!sites.includes(host)) sites.push(host);
+        } else {
+          sites = sites.filter(s => s !== host);
+        }
+
+        safeSetToStorage({ allowedSites: sites }, () => {
+          console.log(checkbox.checked ? `Enabled on ${host}` : `Disabled on ${host}`);
+        });
+      });
+    });
+  });
+});
+
 
 // ------------------ BUTTONS ------------------
 
@@ -61,7 +93,7 @@ clearCacheButton.addEventListener("click", () => {
 
 // Reset panel settings
 resetButton.addEventListener("click", () => {
-  chrome.storage.local.set({
+  safeSetToStorage({
     panelWidth: DEFAULTS.panelWidth,
     jishoContentScale: DEFAULTS.jishoContentScale,
     grammarContentScale: DEFAULTS.grammarContentScale
@@ -128,7 +160,7 @@ saveApiKeyButton.addEventListener("click", () => {
     return;
   }
 
-  chrome.storage.local.set(keys, () => {
+  safeSetToStorage(keys, () => {
     apiKeyStatus.textContent = "✅ API key saved!";
     setTimeout(() => (apiKeyStatus.textContent = ""), 2000);
   });
@@ -160,14 +192,14 @@ chrome.storage.local.get("providerAI", ({ providerAI }) => {
     providerSelect.value = providerAI;
   } else {
     providerSelect.value = PROVIDERS.openAI; // default
-    chrome.storage.local.set({ providerAI: PROVIDERS.openAI });
+    safeSetToStorage({ providerAI: PROVIDERS.openAI });
   }
 });
 
 // Save providerAI when changed
 providerSelect.addEventListener("change", () => {
   const selected = providerSelect.value;
-  chrome.storage.local.set({ providerAI: selected }, () => {
+  safeSetToStorage({ providerAI: selected }, () => {
     console.log("✅ providerAI saved:", selected);
   });
 });

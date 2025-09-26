@@ -5,34 +5,43 @@
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
-    <div id="mainMenu">
-      <label>
-        <input type="checkbox" id="toggleSwitch" />
-        Enable Jisho Helper
-      </label>
+    <div id="mainMenu" style="width: 100px;">
+      <div class="settings-group">
+        <div class="switch-container">
+          <span class="switch-text">Turn on Jisho Helper</span>
+          <label class="switch">
+            <input type="checkbox" id="jishoSwitch">
+            <span class="slider"></span>
+          </label>
+        </div>
 
-      <div>
+        <div class="switch-container">
+          <span class="switch-text">Enable on this site</span>
+          <label class="switch">
+            <input type="checkbox" id="toggleSite">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-group">
         <label>
           Panel width (% of view): 
           <input type="number" id="panelWidthInput" min="10" max="90">
         </label>
-      </div>
 
-      <div>
         <label>
           Jisho content scale (%): 
           <input type="number" id="jishoScaleInput" min="50" max="200">
         </label>
-      </div>
 
-      <div>
         <label>
           Grammar content scale (%): 
           <input type="number" id="grammarScaleInput" min="50" max="200">
         </label>
       </div>
 
-      <div style="margin-top: 10px;">
+      <div class="settings-group">
         <button id="clearCacheButton">Clear Cache</button>
         <button id="resetSettingsButton">Reset Settings</button>
         <button id="apiSettingsButton">Api Keys settings</button>
@@ -84,6 +93,7 @@
     </div>
 
     <script src="defaults.js"></script>
+    <script src="helpers.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>

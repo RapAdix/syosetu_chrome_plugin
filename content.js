@@ -28,7 +28,7 @@ if (IS_TOUCH_DEVICE) {
 
 chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
   console.log("🔧 jishoEnabled =", jishoEnabled);
-
+  
   if (!jishoEnabled) return;
 
   let panel = null;
@@ -64,82 +64,95 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
       selectedText.length <= 20
     ) {
       console.log("📦 Loading Jisho panel for:", selectedText);
-      createPanel();
-      updatePanel();
+      if (!panel) {
+        createPanel();
+      } else {
+        updatePanel();
+      }
     }
   }
 
   function createPanel() {
     if (panel) return;
 
-    panel = document.createElement("div");
-    panel.id = "jisho-panel";
+    chrome.storage.local.get({ allowedSites: [] }, ({ allowedSites }) => {
+      const host = window.location.hostname;
+      if (!allowedSites.includes(host)) {
+        console.log("🚫 Extension disabled on this site");
+        return;
+      }
 
-    // 🧭 Tab header
-    const tabBar = document.createElement("div");
-    tabBar.id = "jisho-tab-bar";
-    tabBar.innerHTML = `
-      <button class="tab-btn active" data-tab="jisho">Jisho</button>
-      <button class="tab-btn" data-tab="grammar">Grammar</button>
-    `;
-    panel.appendChild(tabBar);
+      panel = document.createElement("div");
+      panel.id = "jisho-panel";
 
-    // 📘 Jisho tab content
-    const jishoTab = document.createElement("div");
-    jishoTab.id = "jisho-tab";
-    jishoTab.className = "tab-content active";
-    const iframe = document.createElement("iframe");
-    iframe.id = "jisho-iframe";
-    iframe.src = "about:blank";
-    if (IS_TOUCH_DEVICE) { // autofocus on iframe needs to be suppressed
-      iframe.sandbox = "allow-scripts";
-    } else {
-      iframe.sandbox = "allow-scripts allow-same-origin";
-    }
-    jishoTab.appendChild(iframe);
+      // 🧭 Tab header
+      const tabBar = document.createElement("div");
+      tabBar.id = "jisho-tab-bar";
+      tabBar.innerHTML = `
+        <button class="tab-btn active" data-tab="jisho">Jisho</button>
+        <button class="tab-btn" data-tab="grammar">Grammar</button>
+      `;
+      panel.appendChild(tabBar);
 
-    // 📗 Grammar tab content
-    const grammarTab = document.createElement("div");
-    grammarTab.id = "grammar-tab";
-    grammarTab.className = "tab-content";
-    grammarTab.style.whiteSpace = "pre-wrap";
-    grammarTab.innerHTML =`<div id="chatgpt-response">Ask a grammar question!</div><div id="cached-words"></div>`;
+      // 📘 Jisho tab content
+      const jishoTab = document.createElement("div");
+      jishoTab.id = "jisho-tab";
+      jishoTab.className = "tab-content active";
+      const iframe = document.createElement("iframe");
+      iframe.id = "jisho-iframe";
+      iframe.src = "about:blank";
+      if (IS_TOUCH_DEVICE) { // autofocus on iframe needs to be suppressed
+        iframe.sandbox = "allow-scripts";
+      } else {
+        iframe.sandbox = "allow-scripts allow-same-origin";
+      }
+      jishoTab.appendChild(iframe);
 
-    // Add both tabs
-    panel.appendChild(jishoTab);
-    panel.appendChild(grammarTab);
+      // 📗 Grammar tab content
+      const grammarTab = document.createElement("div");
+      grammarTab.id = "grammar-tab";
+      grammarTab.className = "tab-content";
+      grammarTab.style.whiteSpace = "pre-wrap";
+      grammarTab.innerHTML =`<div id="chatgpt-response">Ask a grammar question!</div><div id="cached-words"></div>`;
 
-     // ✅ Load user preferences for width & font scale
-    chrome.storage.local.get(["panelWidth", "jishoContentScale", "grammarContentScale"], (data) => {
-      const panelWidth = data.panelWidth ?? DEFAULTS.panelWidth;
-      const jishoScale = data.jishoContentScale ?? DEFAULTS.jishoContentScale;
-      const grammarScale = data.grammarContentScale ?? DEFAULTS.grammarContentScale;
-      
-      console.log("Readed loaded:", {panelWidth, jishoScale, grammarScale});
+      // Add both tabs
+      panel.appendChild(jishoTab);
+      panel.appendChild(grammarTab);
 
-      const widthPx = (window.innerWidth * panelWidth) / 100;
-      panel.style.width = `${widthPx}px`;
-      document.body.style.marginRight = `${widthPx - 30}px`; // because there is already some margin
+      // ✅ Load user preferences for width & font scale
+      chrome.storage.local.get(["panelWidth", "jishoContentScale", "grammarContentScale"], (data) => {
+        const panelWidth = data.panelWidth ?? DEFAULTS.panelWidth;
+        const jishoScale = data.jishoContentScale ?? DEFAULTS.jishoContentScale;
+        const grammarScale = data.grammarContentScale ?? DEFAULTS.grammarContentScale;
+        
+        console.log("Readed loaded:", {panelWidth, jishoScale, grammarScale});
 
-      // Apply font scaling
-      changeStyleZoom(iframe, jishoScale);
-      changeStyleZoom(grammarTab, grammarScale);
-    });
+        const widthPx = (window.innerWidth * panelWidth) / 100;
+        panel.style.width = `${widthPx}px`;
+        document.body.style.marginRight = `${widthPx - 30}px`; // because there is already some margin
 
-    document.body.appendChild(panel);
-
-    // 🖱️ Add tab switch logic
-    panel.querySelectorAll(".tab-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        panel.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
-        panel.querySelectorAll(".tab-content").forEach((tab) => tab.classList.remove("active"));
-
-        btn.classList.add("active");
-        const tabId = btn.dataset.tab;
-        panel.querySelector(`#${tabId}-tab`).classList.add("active");
-
-        updatePanel();
+        // Apply font scaling
+        changeStyleZoom(iframe, jishoScale);
+        changeStyleZoom(grammarTab, grammarScale);
       });
+
+      document.body.appendChild(panel);
+
+      // 🖱️ Add tab switch logic
+      panel.querySelectorAll(".tab-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          panel.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+          panel.querySelectorAll(".tab-content").forEach((tab) => tab.classList.remove("active"));
+
+          btn.classList.add("active");
+          const tabId = btn.dataset.tab;
+          panel.querySelector(`#${tabId}-tab`).classList.add("active");
+
+          updatePanel();
+        });
+      });
+
+      updatePanel();
     });
   }
 
@@ -347,67 +360,6 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
       }
 
       console.log(`📦 Estimated cache size: ${totalKB.toFixed(2)} KB`);
-    });
-  }
-
-  function safeSetToStorage(data, onSuccess, onFailure, maxRetries = 3) {
-    attemptSet(data, onSuccess, onFailure, maxRetries);
-  }
-
-  function attemptSet(data, onSuccess, onFailure, remainingRetries) {
-    chrome.storage.local.set(data, () => {
-      if (chrome.runtime.lastError) {
-        console.info(`⚠️ Storage write failed. Remaining retries: ${remainingRetries}`);
-
-        if (remainingRetries <= 0) {
-          console.error("❌ Failed to write even after trimming.");
-          if (onFailure) onFailure();
-          return;
-        }
-
-        trimJishoCache(() => {
-          if (data.jisho_cache_list){
-            chrome.storage.local.get("jisho_cache_list", (res) => {
-              let list = res.jisho_cache_list || [];
-              const keys = Object.keys(data);
-              const cacheKey = keys.find(key => key !== 'jisho_cache_list');
-
-              // Remove word if already in list (we’ll re-add it at front)
-              list = list.filter((w) => w !== cacheKey);
-              list.unshift(cacheKey); // Add to front (most recent)
-              data.jisho_cache_list = list;
-              attemptSet(data, onSuccess, onFailure, remainingRetries - 1);
-            });
-          } else {
-            attemptSet(data, onSuccess, onFailure, remainingRetries - 1);
-          }
-        });
-      } else {
-        console.log("✅ Successfully saved.");
-        if (onSuccess) onSuccess();
-      }
-    });
-  }
-
-  function trimJishoCache(callback) {
-    chrome.storage.local.get("jisho_cache_list", (res) => {
-      let list = res.jisho_cache_list || [];
-      if (list.length === 0) {
-        console.error("🚨 Jisho cache is already empty. Cannot trim further.");
-        alert("❗ Cache full and no Jisho entries to delete.");
-        if (callback) callback();
-        return;
-      }
-
-      // Remove the oldest entry
-      const cacheKeyToRemove = list.pop();
-
-      chrome.storage.local.remove(cacheKeyToRemove, () => {
-        chrome.storage.local.set({ jisho_cache_list: list }, () => {
-          console.log(`🗑️ Removed oldest Jisho cache entry: ${cacheKeyToRemove}`);
-          if (callback) callback();
-        });
-      });
     });
   }
 
