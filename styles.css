@@ -108,4 +108,29 @@ input:checked + .slider::before {
 .settings-group {
   margin-bottom: 15px;
 }
+.settings-group label:not(.switch-label) {
+  display: block;
+  margin-bottom: 5px;
+}
+.settings-group label:not(.switch-label) input {
+  display: block;
+}
+.settings-group div {
+  margin-bottom: 9px;
+}
 
+.settings-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.settings-buttons button {
+  width: 100px;
+}
+
+/* Stack vertically if width */
+@media (max-width: 350px) {
+  .settings-buttons {
+    flex-direction: column;
+  }
+}
