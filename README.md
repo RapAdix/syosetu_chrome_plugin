@@ -45,8 +45,32 @@ See [PRIVACY.md](./PRIVACY.md) for details.
 
 ---
 
+## Contributing
+
+Contributions are welcome!  
+
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines before contributing.
+
+---
+
 ## License
 
-This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.
+This project is available under a **Dual License**:
 
+- **Apache License 2.0** — for personal and non-commercial use.
+- **Commercial License** — required for any commercial use. Please contact the author.
 
+By using this project you agree to the terms of one of these licenses.
+
+See the [LICENSE](LICENSE) file for full details.
+
+---
+
+### Definition of Commercial Use
+
+Commercial use means any use of the project that is intended for or directed toward commercial advantage or monetary compensation, including but not limited to:
+- Integration into a paid product or service
+- Redistribution for profit
+- Use in commercial software
+
+If you plan any such use, you must obtain a Commercial License from the author.

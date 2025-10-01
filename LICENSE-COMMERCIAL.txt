@@ -1,0 +1,15 @@
+Copyright 2025 Adrian Kucharczuk
+
+This project is available under a commercial license.  
+Any commercial use — defined as use that is intended for or directed toward commercial advantage or monetary compensation — requires explicit permission from the copyright holder.
+
+To obtain a commercial license, please contact:
+Adrian Kucharczuk  
+Email: [rapadix.dev@gmail.com]
+
+Examples of commercial use include, but are not limited to:
+- Integration into a paid product or service
+- Redistribution for profit
+- Use in commercial software
+
+Without a commercial license, commercial use of this project is strictly prohibited.
