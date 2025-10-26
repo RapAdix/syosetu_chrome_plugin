@@ -41,8 +41,9 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
 
   console.log("👂 Listening for selection change");
 
-  document.addEventListener("selectionchange", () => {
+  document.addEventListener("selectionchange", (e) => {
     if (selectionTimeout) clearTimeout(selectionTimeout);
+    if (e.target.closest("#jisho-panel")) return;
 
     // Wait 800ms after last selection event before handling
     selectionTimeout = setTimeout(() => {
@@ -53,9 +54,9 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
   console.log("👂 Listening for mouse selection");
 
   document.addEventListener("mouseup", (e) => {
+    if (selectionTimeout) clearTimeout(selectionTimeout);
     if (e.target.closest("#jisho-panel")) return;
 
-    if (selectionTimeout) clearTimeout(selectionTimeout);
     handleTextSelection("🖱️ Mouse selected text:");
   });
 
@@ -287,7 +288,7 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
 
   function updateJishoPanel() {
     const word = window.getSelection().toString().trim();
-    if (!word) return;
+    if (!word || word.length > 20) return;
     const cacheKey = `jisho_cache_${word}`;
 
     chrome.storage.local.get(["jisho_cache_list", cacheKey], (res) => {

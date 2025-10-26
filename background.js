@@ -183,12 +183,12 @@ function explainWordPrompt(sentence, marked, index) {
 
     Focus only on the marked word: 「${marked}」 at index: ${index}
 
-    Please provide:
-    1. A brief explanation of its grammatical role and meaning.
-    2. Any nuance about why this specific word is used.
+    For a non-beginner person learning japanese, please provide:
+    1. A brief explanation of its meaning and grammatical role, with focus on grammar rules it follows and combines.
+    2. Nuance about why this specific word is used if not obvious from previous point.
     3. A natural English translation of the full sentence, that preserves the original modifier/syntactic relationships. No justification
 
-    Be concise.
+    Skip task introduction, be concise, especially shorten easy parts.
   `);
 }
 
@@ -197,6 +197,7 @@ function explainSentencePrompt(sentence) {
     Break down the following Japanese sentence into its grammar parts step-by-step. For each part, list:
     - The Japanese phrase with romaji and grammatical function of each part (particle, adjective, potential/negative verb, etc.)
     - Concise meaning in English
+    Show how the parts connect together into bigger english meaning.
 
     no headings, be to the point. In a structured list.
 
