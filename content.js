@@ -43,7 +43,13 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
 
   document.addEventListener("selectionchange", (e) => {
     if (selectionTimeout) clearTimeout(selectionTimeout);
-    if (e.target.closest("#jisho-panel")) return;
+
+    // Get the element where selection starts
+    const selection = document.getSelection();
+    const anchorNode = selection?.anchorNode;
+    const element = anchorNode?.nodeType === 3 ? anchorNode.parentElement : anchorNode;
+    // Skip if selection is inside the panel
+    if (element && element.closest("#jisho-panel")) return;
 
     // Wait 800ms after last selection event before handling
     selectionTimeout = setTimeout(() => {

@@ -197,7 +197,7 @@ function explainSentencePrompt(sentence) {
     Break down the following Japanese sentence into its grammar parts step-by-step. For each part, list:
     - The Japanese phrase with romaji and grammatical function of each part (particle, adjective, potential/negative verb, etc.)
     - Concise meaning in English
-    Show how the parts connect together into bigger english meaning.
+    Show how the parts connect together into bigger english meaning - make it in steps if the phrase is long and rich gramatically.
 
     no headings, be to the point. In a structured list.
 
