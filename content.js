@@ -331,7 +331,8 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
     const index = selection.anchorOffset;
 
     // Simple sentence splitter: period, 。、！？
-    const before = text.slice(0, index).split(/(?<=[。！？\.\!\?])/).pop() || "";
+    // index+1 in case that 'marked' is at the beginning of the sentence.
+    const before = text.slice(0, index + 1).split(/(?<=[。！？\.\!\?])/).pop().slice(0, -1) || "";
     const after = text.slice(index).split(/[。！？\.\!\?]/)[0] || "";
 
     return {sentence: before + after, index: before.length};
