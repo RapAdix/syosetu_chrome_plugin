@@ -85,10 +85,11 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
 
   function createPanel() {
     if (panel) return;
+    console.log("Creating panel");
 
     chrome.storage.local.get({ allowedSites: [] }, ({ allowedSites }) => {
-      const host = window.location.hostname;
-      if (!allowedSites.includes(host)) {
+      const hostname = window.location.hostname;
+      if (!allowedSites.includes(hostname)) {
         console.log("🚫 Extension disabled on this site");
         return;
       }
@@ -124,7 +125,7 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
       grammarTab.id = "grammar-tab";
       grammarTab.className = "tab-content";
       grammarTab.style.whiteSpace = "pre-wrap";
-      grammarTab.innerHTML =`<div id="chatgpt-response">Ask a grammar question!</div><div id="cached-words"></div>`;
+      grammarTab.innerHTML =`<div id="grammar-response">Ask a grammar question!</div><div id="cached-words"></div>`;
 
       // Add both tabs
       panel.appendChild(jishoTab);
@@ -147,7 +148,12 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
         changeStyleZoom(grammarTab, grammarScale);
       });
 
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css";
+
       document.body.appendChild(panel);
+      document.head.appendChild(link);
 
       // 🖱️ Add tab switch logic
       panel.querySelectorAll(".tab-btn").forEach((btn) => {
@@ -186,7 +192,7 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
     const {sentence, index} = getSentenceAroundSelection();
 
     document.getElementById("cached-words").innerHTML="";
-    const responseBox = document.getElementById("chatgpt-response");
+    const responseBox = document.getElementById("grammar-response");
     responseBox.textContent = "💬 Checking cache...";
 
     const explainWordKey = `explain_word|${sentence}|${marked}|${index}`;
@@ -196,17 +202,61 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
       const wordResponse = result[explainWordKey];
       const sentenceResponse = result[explainSentenceKey];
 
+      responseBox.textContent = "";
       // Show word response if cached
       if (wordResponse) {
-        responseBox.textContent = wordResponse;
-        if (sentenceResponse) {
-          responseBox.textContent += "\n" + sentenceResponse;
-        }
-      } else if (sentenceResponse) {
-        responseBox.textContent = sentenceResponse;
-      } else {
+        const wordResponseElement = document.createElement("div");
+        wordResponseElement.id = "word-response";
+        wordResponseElement.classList.add("grammar-result");
+        wordResponseElement.textContent = wordResponse;
+        const deleteBtn = createFaDeleteButton(() => {
+          console.debug(`Delete for word: "${marked}" in a sentence: "${sentence}" was pressed`);
+          chrome.storage.local.remove(explainWordKey, () => {
+            if (chrome.runtime.lastError) {
+              console.error("Error removing key:", chrome.runtime.lastError);
+              return;
+            }
+
+            // Add fade-out animation
+            wordResponseElement.classList.add("fade-out");
+
+            // Remove element after animation ends (200ms)
+            setTimeout(() => {
+              wordResponseElement.remove();
+            }, 200);
+          });
+        });
+        wordResponseElement.appendChild(deleteBtn);
+        responseBox.appendChild(wordResponseElement);
+      } 
+      if (sentenceResponse) {
+        const sentenceResponseElement = document.createElement("div");
+        sentenceResponseElement.id = "sentence-response";
+        sentenceResponseElement.classList.add("grammar-result");
+        sentenceResponseElement.textContent = sentenceResponse;
+        const deleteBtn = createFaDeleteButton(() => {
+          console.debug(`Delete for sentence: "${sentence}" was pressed`);
+          chrome.storage.local.remove(explainSentenceKey, () => {
+            if (chrome.runtime.lastError) {
+              console.error("Error removing key:", chrome.runtime.lastError);
+              return;
+            }
+
+            // Add fade-out animation
+            sentenceResponseElement.classList.add("fade-out");
+
+            // Remove element after animation ends (200ms)
+            setTimeout(() => {
+              sentenceResponseElement.remove();
+            }, 200);
+          });
+        });
+        sentenceResponseElement.appendChild(deleteBtn);
+        responseBox.appendChild(sentenceResponseElement);
+      } 
+      if (!wordResponse && !sentenceResponse) {
         console.log('❌ Cache miss. Waiting for user confirmation.');
-        responseBox.textContent = `❔ No cached response found for ${marked}.`;
+        responseBox.textContent = `❔ No cached response found for ${marked}.\n`;
       }
 
       // Create word button if not cached
@@ -252,7 +302,7 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
       const btn = document.createElement("button");
       btn.textContent = `${word} (${index})`;
       btn.addEventListener("click", () => {
-        document.getElementById("chatgpt-response").textContent = reply;
+        document.getElementById("grammar-response").textContent = reply;
       });
       container.appendChild(btn);
     });
@@ -268,15 +318,32 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
       button.textContent = '💬 Asking...';
       onClick();
     });
-    document.getElementById("chatgpt-response").appendChild(document.createElement('br'));
-    document.getElementById("chatgpt-response").appendChild(button);
+    document.getElementById("grammar-response").appendChild(button);
+  }
+
+  function createFaDeleteButton(onClick) {
+    const deleteBtn = document.createElement("button");
+    deleteBtn.classList.add("delete-btn");
+    deleteBtn.title = "Delete this result";
+
+    deleteBtn.addEventListener('click', () => {
+      deleteBtn.disabled = true;
+      deleteBtn.textContent = 'Deleting...';
+      onClick();
+    });
+
+    const icon = document.createElement("i");
+    icon.classList.add("fa", "fa-trash");
+
+    deleteBtn.appendChild(icon);
+    return deleteBtn;
   }
 
   function askAI(cacheKey, sentence, marked, index) {
     chrome.runtime.sendMessage(
       { type: "askAI", sentence, marked, index },
       (res) => {
-        const responseBox = document.getElementById("chatgpt-response");
+        const responseBox = document.getElementById("grammar-response");
 
         if (res.ok) {
           safeSetToStorage({ [cacheKey]: res.reply }, 

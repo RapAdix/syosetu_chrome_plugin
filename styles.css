@@ -55,10 +55,69 @@
   white-space: pre-wrap;
 }
 
-#chatgpt-response,
+#grammar-response,
 #cached-words {
   flex-shrink: 0;
   padding: 8px;
+}
+
+#grammar-response button {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.grammar-result {
+  position: relative;
+  background: transparent;
+  border: none;
+  padding: 10px 8px;
+  margin-bottom: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.grammar-result:hover {
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
+}
+
+/* Delete button – hidden by default */
+.delete-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background-color: rgba(255, 0, 0, 0.6); /* semi-transparent red */
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  font-size: 14px;
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(0.8);
+  transition:
+    opacity 0.2s ease,
+    visibility 0.2s ease,
+    transform 0.2s ease,
+    background-color 0.2s ease;
+}
+
+/* Show button on hover */
+.grammar-result:hover .delete-btn {
+  opacity: 1;
+  visibility: visible;
+  transform: scale(1);
+}
+
+/* Hovering directly over button */
+.delete-btn:hover {
+  background-color: #e53935;
+}
+
+.fade-out {
+  opacity: 0;
+  transform: scale(0.97);
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .switch-container {
