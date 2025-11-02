@@ -391,18 +391,26 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
 
   function getSentenceAroundSelection() {
     const selection = window.getSelection();
-    const node = selection.anchorNode;
-    if (!node || !node.textContent) return selection.toString().trim();;
+    if (!selection || selection.rangeCount === 0) return "";
 
-    const text = node.textContent;
-    const index = selection.anchorOffset;
+    const range = selection.getRangeAt(0);
+    const startNode = range.startContainer;
+    const endNode = range.endContainer;
+    const startOffset = range.startOffset;
 
-    // Simple sentence splitter: period, 。、！？
-    // index+1 in case that 'marked' is at the beginning of the sentence.
-    const before = text.slice(0, index + 1).split(/(?<=[。！？\.\!\?])/).pop().slice(0, -1) || "";
-    const after = text.slice(index).split(/[。！？\.\!\?]/)[0] || "";
+    if (startNode === endNode && startNode.nodeType === Node.TEXT_NODE) {
+      const text = startNode.textContent;
+      const index = startOffset;
 
-    return {sentence: before + after, index: before.length};
+      // Simple sentence splitter: period, 。、！？
+      // index+1 in case that 'marked' is at the beginning of the sentence.
+      const before = text.slice(0, index + 1).split(/(?<=[。！？\.\!\?])/).pop().slice(0, -1) || "";
+      const after = text.slice(index).split(/[。！？\.\!\?]/)[0] || "";
+
+      return {sentence: before + after, index: before.length};
+    } else {
+      console.warn("Currently only higlhihts inside the same node are supported");
+    }
   }
 
 
