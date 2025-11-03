@@ -205,54 +205,20 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
       responseBox.textContent = "";
       // Show word response if cached
       if (wordResponse) {
-        const wordResponseElement = document.createElement("div");
-        wordResponseElement.id = "word-response";
-        wordResponseElement.classList.add("grammar-result");
-        wordResponseElement.textContent = wordResponse;
-        const deleteBtn = createFaDeleteButton(() => {
-          console.debug(`Delete for word: "${marked}" in a sentence: "${sentence}" was pressed`);
-          chrome.storage.local.remove(explainWordKey, () => {
-            if (chrome.runtime.lastError) {
-              console.error("Error removing key:", chrome.runtime.lastError);
-              return;
-            }
-
-            // Add fade-out animation
-            wordResponseElement.classList.add("fade-out");
-
-            // Remove element after animation ends (200ms)
-            setTimeout(() => {
-              wordResponseElement.remove();
-            }, 200);
-          });
-        });
-        wordResponseElement.appendChild(deleteBtn);
-        responseBox.appendChild(wordResponseElement);
+        const wordResultElement = createResultElement(
+          explainWordKey,
+          `Delete for word: "${marked}" in a sentence: "${sentence}" was pressed`,
+          wordResponse);
+        wordResultElement.id = "word-result";
+        responseBox.appendChild(wordResultElement);
       } 
       if (sentenceResponse) {
-        const sentenceResponseElement = document.createElement("div");
-        sentenceResponseElement.id = "sentence-response";
-        sentenceResponseElement.classList.add("grammar-result");
-        sentenceResponseElement.textContent = sentenceResponse;
-        const deleteBtn = createFaDeleteButton(() => {
-          console.debug(`Delete for sentence: "${sentence}" was pressed`);
-          chrome.storage.local.remove(explainSentenceKey, () => {
-            if (chrome.runtime.lastError) {
-              console.error("Error removing key:", chrome.runtime.lastError);
-              return;
-            }
-
-            // Add fade-out animation
-            sentenceResponseElement.classList.add("fade-out");
-
-            // Remove element after animation ends (200ms)
-            setTimeout(() => {
-              sentenceResponseElement.remove();
-            }, 200);
-          });
-        });
-        sentenceResponseElement.appendChild(deleteBtn);
-        responseBox.appendChild(sentenceResponseElement);
+        const sentenceResultElement = createResultElement(
+          explainSentenceKey, 
+          `Delete for sentence: "${sentence}" was pressed`,
+          sentenceResponse);
+        sentenceResultElement.id = "sentence-result";
+        responseBox.appendChild(sentenceResultElement);
       } 
       if (!wordResponse && !sentenceResponse) {
         console.log('❌ Cache miss. Waiting for user confirmation.');
@@ -283,7 +249,7 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
           // Each key encodes: sentence | word | index
           const cachedWords = keysForSentence.map(k => {
             const [, , word, index] = k.split("|");
-            return { word, index: parseInt(index), reply: items[k] };
+            return { word, index: parseInt(index), reply: items[k], key: k};
           }).sort((a, b) => a.index - b.index);
 
           if (keysForSentence?.length) {
@@ -298,16 +264,18 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
     const container = document.getElementById("cached-words");
     container.innerHTML = "<p>📚 Cached words:</p>";
 
-    cachedWords.forEach(({word, reply, index}) => {
+    cachedWords.forEach(({word, reply, index, key}) => {
       const btn = document.createElement("button");
       btn.textContent = `${word} (${index})`;
       btn.addEventListener("click", () => {
-        document.getElementById("grammar-response").textContent = reply;
+        const responseBox = document.getElementById("grammar-response");
+        const wordResult = createResultElement(key, `Delete for word: "${word}" at ${index} was pressed`, reply)
+        responseBox.textContent = "";
+        responseBox.appendChild(wordResult);
       });
       container.appendChild(btn);
     });
   }
-
 
   function createAskButton(label, onClick) {
     const button = document.createElement('button');
@@ -337,6 +305,31 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
 
     deleteBtn.appendChild(icon);
     return deleteBtn;
+  }
+
+  function createResultElement(key, message, content) {
+    const resultElement = document.createElement("div");
+    resultElement.classList.add("grammar-result");
+    resultElement.textContent = content;
+    const deleteBtn = createFaDeleteButton(() => {
+      console.debug(message);
+      chrome.storage.local.remove(key, () => {
+        if (chrome.runtime.lastError) {
+          console.error("Error removing key:", chrome.runtime.lastError);
+          return;
+        }
+
+        // Add fade-out animation
+        resultElement.classList.add("fade-out");
+
+        // Remove element after animation ends (200ms)
+        setTimeout(() => {
+          resultElement.remove();
+        }, 200);
+      });
+    });
+    resultElement.appendChild(deleteBtn);
+    return resultElement;
   }
 
   function askAI(cacheKey, sentence, marked, index) {
