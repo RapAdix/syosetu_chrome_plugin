@@ -21,6 +21,7 @@
 console.log("✅ Jisho content script loaded");
 
 const DEFAULTS = window.JishoDefaults;
+const MAX_WORD_LENGTH = 30;
 
 const IS_TOUCH_DEVICE = navigator.maxTouchPoints > 0;
 
@@ -67,14 +68,14 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
   });
 
   function handleTextSelection(description) {
-    const selectedText = window.getSelection().toString().trim();
+    const selectedText = SentenceTools.getSelection();
     console.log(description, selectedText);
     
     if (
       selectedText &&
-      selectedText.length <= 20
+      selectedText.length <= MAX_WORD_LENGTH
     ) {
-      console.log("📦 Loading Jisho panel for:", selectedText);
+      console.log("📦 Loading panel for:", selectedText);
       if (!panel) {
         createPanel();
       } else {
@@ -187,9 +188,9 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
   }
 
   function updateGPTPanel() {
-    const marked = window.getSelection().toString().trim();
+    const marked = SentenceTools.getSelection();
     if (!marked) return;
-    const {sentence, index} = getSentenceAroundSelection();
+    const {sentence, index} = SentenceTools.getSentenceAroundSelection();
 
     document.getElementById("cached-words").innerHTML="";
     const responseBox = document.getElementById("grammar-response");
@@ -353,8 +354,8 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
   }
 
   function updateJishoPanel() {
-    const word = window.getSelection().toString().trim();
-    if (!word || word.length > 20) return;
+    const word = SentenceTools.getSelection();
+    if (word.length > MAX_WORD_LENGTH) return;
     const cacheKey = `jisho_cache_${word}`;
 
     chrome.storage.local.get(["jisho_cache_list", cacheKey], (res) => {
@@ -370,7 +371,7 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
       console.log("📡 Asking background to fetch:", word);
       chrome.runtime.sendMessage({ type: "fetchJisho", word }, (response) => {
         if (response?.html) {
-          if (word === window.getSelection().toString().trim()) {
+          if (word === SentenceTools.getSelection()) {
             iframe.srcdoc = response.html;
           }
           cacheJishoResult(cacheKey, response.html);
@@ -381,31 +382,6 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
       });
     });
   }
-
-  function getSentenceAroundSelection() {
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return "";
-
-    const range = selection.getRangeAt(0);
-    const startNode = range.startContainer;
-    const endNode = range.endContainer;
-    const startOffset = range.startOffset;
-
-    if (startNode === endNode && startNode.nodeType === Node.TEXT_NODE) {
-      const text = startNode.textContent;
-      const index = startOffset;
-
-      // Simple sentence splitter: period, 。、！？
-      // index+1 in case that 'marked' is at the beginning of the sentence.
-      const before = text.slice(0, index + 1).split(/(?<=[。！？\.\!\?])/).pop().slice(0, -1) || "";
-      const after = text.slice(index).split(/[。！？\.\!\?]/)[0] || "";
-
-      return {sentence: before + after, index: before.length};
-    } else {
-      console.warn("Currently only higlhihts inside the same node are supported");
-    }
-  }
-
 
   function cacheJishoResult(cacheKey, html) {
     chrome.storage.local.get("jisho_cache_list", (res) => {
@@ -459,7 +435,7 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName === "local") {
       if (changes.panelWidth) {
-        const newWidth = changes.panelWidth.newValue ?? window.JishoDefaults.panelWidth;
+        const newWidth = changes.panelWidth.newValue ?? DEFAULTS.panelWidth;
         const panel = document.getElementById("jisho-panel");
         if (panel) {
           const widthPx = (window.innerWidth * newWidth) / 100;
