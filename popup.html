@@ -5,7 +5,7 @@
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
-    <div id="mainMenu" style="width: 110px;">
+    <div id="mainMenu" style="width: 130px;">
       <div class="settings-group">
         <div class="switch-container">
           <span class="switch-text">Turn on Jisho Helper</span>
@@ -17,10 +17,20 @@
 
         <div class="switch-container">
           <span class="switch-text">Enable on this site</span>
+          <button id="siteListChevron" class="chevron-btn">
+            <i class="fa-solid fa-chevron-down"></i>
+          </button>
           <label class="switch-label switch">
             <input type="checkbox" id="toggleSite">
             <span class="slider"></span>
           </label>
+        </div>
+
+        <div id="siteListDropdown" class="dropdown-hidden">
+          <label>Enabled sites:</label>
+          <textarea id="allowedSitesInput"></textarea>
+
+          <button id="saveAllowedSitesButton">Save</button>
         </div>
       </div>
 

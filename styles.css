@@ -172,6 +172,35 @@ input:checked + .slider::before {
   transform: translateX(11px); /* ← knob travel distance */
 }
 
+.chevron-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 14px;
+  color: #555;
+  transition: transform 0.2s ease;
+}
+
+.chevron-btn.rotate {
+  transform: rotate(180deg);
+}
+
+.dropdown-hidden {
+  display: none;
+  margin-top: 5px;
+  width: 100%;
+}
+
+#allowedSitesInput {
+  width: 100%;
+  min-height: 100px;
+  max-height: 45vh;
+  overflow-y: auto;
+  resize: vertical;
+  box-sizing: border-box; /* include padding in height */
+}
+
 .settings-group {
   margin-bottom: 15px;
 }

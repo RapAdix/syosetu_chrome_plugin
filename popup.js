@@ -67,6 +67,11 @@ document.addEventListener("DOMContentLoaded", () => {
     chrome.storage.local.get({ allowedSites: [] }, (result) => {
       let sites = result.allowedSites;
 
+      if (Array.isArray(sites)) {
+        allowedSitesInput.value = sites.join("\n");
+        resizeTextarea();
+      }
+
       // Set initial checkbox state
       checkbox.checked = sites.includes(host);
 
@@ -77,6 +82,8 @@ document.addEventListener("DOMContentLoaded", () => {
           sites = sites.filter(s => s !== host);
         }
 
+        allowedSitesInput.value = sites.join("\n");
+        resizeTextarea();
         safeSetToStorage({ allowedSites: sites }, () => {
           console.log(checkbox.checked ? `Enabled on ${host}` : `Disabled on ${host}`);
         });
@@ -85,6 +92,48 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
+// ---------- ENABLED SITES DROPDOWN -----------
+
+const siteListChevronButton = document.getElementById("siteListChevron");
+const siteListDropdown = document.getElementById("siteListDropdown");
+const allowedSitesInput = document.getElementById("allowedSitesInput");
+const saveAllowedSitesButton = document.getElementById("saveAllowedSitesButton");
+
+// Expand / collapse the dropdown
+siteListChevronButton.addEventListener("click", () => {
+  const isOpen = siteListDropdown.style.display === "block";
+
+  siteListDropdown.style.display = isOpen ? "none" : "block";
+
+  // rotate icon
+  siteListChevronButton.classList.toggle("rotate");
+
+  if (!isOpen) resizeTextarea(); // only resize when opening
+});
+
+// Save updated list
+saveAllowedSitesButton.addEventListener("click", () => {
+  const list = allowedSitesInput.value
+    .split("\n")
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  chrome.storage.local.set({ allowedSites: list });
+
+  // Refresh toggleSite if user edited the active domain
+  chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+    const currentHost = new URL(tabs[0].url).hostname;
+    const toggleSite = document.getElementById("toggleSite");
+    toggleSite.checked = list.includes(currentHost);
+  });
+});
+
+function resizeTextarea() {
+    allowedSitesInput.style.height = Math.min(allowedSitesInput.scrollHeight, window.innerHeight * 0.35) + "px";
+}
+
+// Update on user input
+allowedSitesInput.addEventListener("input", resizeTextarea);
 
 // ------------------ BUTTONS ------------------
 
@@ -126,6 +175,8 @@ deleteKeysButton.addEventListener("click", () => {
         console.error("Error removing AI keys:", chrome.runtime.lastError);
       } else {
         statusMessage.textContent = "AI keys deleted!";
+        openaiApiKeyInput.value = "";
+        geminiApiKeyInput.value = "";
         setTimeout(() => { statusMessage.textContent = ""; }, 2000);
       }
   });
