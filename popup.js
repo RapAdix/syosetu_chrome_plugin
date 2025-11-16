@@ -23,6 +23,7 @@ const DEFAULTS = window.JishoDefaults;
 const toggle = document.getElementById("jishoSwitch");
 const clearCacheButton = document.getElementById("clearCacheButton");
 const statusMessage = document.getElementById("statusMessage");
+const deleteKeysButton = document.getElementById("deleteKeys");
 
 // Settings inputs
 const panelWidthInput = document.getElementById("panelWidthInput");
@@ -89,11 +90,46 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // Clear cache button
 clearCacheButton.addEventListener("click", () => {
-  chrome.storage.local.clear(() => {
-    statusMessage.textContent = "✅ Cache cleared!";
-    setTimeout(() => { statusMessage.textContent = ""; }, 2000);
+  chrome.storage.local.get(null, (all) => {
+    if (chrome.runtime.lastError) {
+      console.error("Error reading storage:", chrome.runtime.lastError);
+      return;
+    }
+
+    let keysToDelete = Object.keys(all).filter(key =>
+      key.startsWith("explain_word|") ||
+      key.startsWith("explain_sentence|") ||
+      key.startsWith("jisho_cache_")
+    );
+
+    keysToDelete.push("jisho_cache_list");
+
+    if (keysToDelete.length === 0) {
+      console.log("No grammar cache keys to delete.");
+      return;
+    }
+
+    chrome.storage.local.remove(keysToDelete, () => {
+      if (chrome.runtime.lastError) {
+        console.error("Error removing cache keys:", chrome.runtime.lastError);
+      } else {
+        statusMessage.textContent = "grammar cache cleared!";
+        setTimeout(() => { statusMessage.textContent = ""; }, 2000);
+      }
+    });
   });
 });
+
+deleteKeysButton.addEventListener("click", () => {
+  chrome.storage.local.remove(["openaiApiKey", "geminiApiKey"], () => {
+    if (chrome.runtime.lastError) {
+        console.error("Error removing AI keys:", chrome.runtime.lastError);
+      } else {
+        statusMessage.textContent = "AI keys deleted!";
+        setTimeout(() => { statusMessage.textContent = ""; }, 2000);
+      }
+  });
+})
 
 // Reset panel settings
 resetButton.addEventListener("click", () => {
@@ -118,7 +154,6 @@ const geminiApiKeyInput = document.getElementById("geminiApiKey");
 const toggleOpenaiInputBtn = document.getElementById("toggleOpenaiKey")
 const toggleGeminiInputBtn = document.getElementById("toggleGeminiKey")
 const saveApiKeyButton = document.getElementById("saveKeys");
-const apiKeyStatus = document.getElementById("apiKeyStatus");
 
 function loadKey(input, name) {
   chrome.storage.local.get(name, (result) => {
@@ -160,13 +195,13 @@ saveApiKeyButton.addEventListener("click", () => {
   }
   
   if (!Object.keys(keys).length) {
-    apiKeyStatus.textContent = "❌ Please enter a valid API key.";
+    statusMessage.textContent = "Please enter a valid API key.";
     return;
   }
 
   safeSetToStorage(keys, () => {
-    apiKeyStatus.textContent = "✅ API key saved!";
-    setTimeout(() => (apiKeyStatus.textContent = ""), 2000);
+    statusMessage.textContent = "API key saved!";
+    setTimeout(() => (statusMessage.textContent = ""), 2000);
   });
 });
 
