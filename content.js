@@ -370,14 +370,14 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
 
       console.log("📡 Asking background to fetch:", word);
       chrome.runtime.sendMessage({ type: "fetchJisho", word }, (response) => {
-        if (response?.html) {
+        if (response?.ok) {
           if (word === SentenceTools.getSelection()) {
-            iframe.srcdoc = response.html;
+            iframe.srcdoc = response.reply;
           }
-          cacheJishoResult(cacheKey, response.html);
+          cacheJishoResult(cacheKey, response.reply);
         } else {
-          iframe.srcdoc = `<p>❌ Failed to load Jisho: ${response?.error}</p>`;
-          console.error(response?.error);
+          iframe.srcdoc = response?.reply;
+          console.log(`Error in Jisho fetch: ${response?.reply}`);
         }
       });
     });

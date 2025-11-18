@@ -114,12 +114,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "fetchJisho") {
     const url = `https://jisho.org/search/${encodeURIComponent(message.word)}`;
     fetch(url)
-      .then((response) => response.text())
+      .then((response) => {
+        if (!response.ok) {
+          return Promise.reject({ status:response.status });
+        }
+        return response.text();
+      })
       .then((html) => {
-        sendResponse({ html });
+        sendResponse({ ok: true, reply: html });
       })
       .catch((error) => {
-        sendResponse({ error: error.message });
+        if (error.status) {
+          sendResponse({ ok: false, reply: `❌ Failed to load Jisho, status: ${error.status}` });
+        } else {
+          sendResponse({ ok: false, reply: error.message });
+        }
       });
 
     return true; // Keep message channel open for async response
