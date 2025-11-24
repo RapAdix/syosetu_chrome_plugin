@@ -383,42 +383,6 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
     });
   }
 
-  function cacheJishoResult(cacheKey, html) {
-    chrome.storage.local.get("jisho_cache_list", (res) => {
-      let list = res.jisho_cache_list || [];
-
-      // Remove word if already in list (we’ll re-add it at front)
-      list = list.filter((w) => w !== cacheKey);
-      list.unshift(cacheKey); // Add to front (most recent)
-
-      // Store new HTML and updated list
-      safeSetToStorage({
-          [cacheKey]: html,
-          jisho_cache_list: list,
-        },
-        () => { console.log('💾 Cached response for:', cacheKey); }, 
-        () => { alert('❌ Cache is full. Cannot save new response.'); }
-      );
-    });
-
-    //For development size tracking
-    function getSizeInKB(str) {
-      return new Blob([str]).size / 1024;
-    }
-
-    chrome.storage.local.get(null, (items) => {
-      let totalKB = 0;
-
-      for (const [key, value] of Object.entries(items)) {
-        if (key.startsWith("jisho_cache_") && typeof value === "string") {
-          totalKB += getSizeInKB(value);
-        }
-      }
-
-      console.log(`📦 Estimated cache size: ${totalKB.toFixed(2)} KB`);
-    });
-  }
-
   function changeStyleZoom(element, newScale) {
     if (element) {
       if (!IS_TOUCH_DEVICE) { // Because this does not work for Android
