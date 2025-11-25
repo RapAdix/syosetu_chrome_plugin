@@ -341,10 +341,9 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
 
         if (res.ok) {
           safeSetToStorage({ [cacheKey]: res.reply }, 
-            () => { console.log('💾 Cached response for:', cacheKey); }, 
-            () => { alert('❌ Cache is full. Cannot save new response.'); }
+            () => { console.log('💾 Cached response for:', cacheKey); updateGPTPanel(); }, 
+            () => { alert('❌ Cache is full. Cannot save new response.'); updateGPTPanel(); }
           );
-          updateGPTPanel();
         } else {
           responseBox.prepend(document.createElement("br"));
           responseBox.prepend(document.createTextNode(res.reply));
@@ -374,7 +373,7 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
           if (word === SentenceTools.getSelection()) {
             iframe.srcdoc = response.reply;
           }
-          cacheJishoResult(cacheKey, response.reply);
+          safeSetToStorageWithList(cacheKey, response.reply);
         } else {
           iframe.srcdoc = response?.reply;
           console.log(`Error in Jisho fetch: ${response?.reply}`);

@@ -18,23 +18,38 @@
  * See LICENSE-COMMERCIAL.txt for details.
  */
 
-function cacheJishoResult(cacheKey, html) {
-  chrome.storage.local.get("jisho_cache_list", (res) => {
-    let list = res.jisho_cache_list || [];
+let storageQueue = Promise.resolve();
 
-    // Remove word if already in list (we’ll re-add it at front)
-    list = list.filter((w) => w !== cacheKey);
-    list.unshift(cacheKey); // Add to front (most recent)
+function serializeStorageOperation(op) {
+  storageQueue = storageQueue.then(op).catch(()=>{});
+  return storageQueue;
+}
 
-    // Store new HTML and updated list
-    safeSetToStorage({
-        [cacheKey]: html,
-        jisho_cache_list: list,
-      },
-      () => { console.log('💾 Cached response for:', cacheKey); }, 
-      () => { alert('❌ Cache is full. Cannot save new response.'); }
+function safeSetToStorageWithList(cacheKey, html) {
+  if (!cacheKey.startsWith("jisho_cache_")) { // Safe check that there is a need to calculate the list
+    safeSetToStorage({[cacheKey]: html});
+  } else {
+    serializeStorageOperation(() => 
+      new Promise((resolve) => {
+        chrome.storage.local.get("jisho_cache_list", (res) => {
+          let list = res.jisho_cache_list || [];
+
+          // Remove word if already in list (we’ll re-add it at front)
+          list = list.filter((w) => w !== cacheKey);
+          list.unshift(cacheKey); // Add to front (most recent)
+          
+          attemptSet({
+              [cacheKey]: html,
+              jisho_cache_list: list,
+            },
+            () => { console.log('💾 Cached response for:', cacheKey); resolve(); }, 
+            () => { alert('❌ Cache is full. Cannot save new response.'); resolve(); },
+            4
+          );
+        });
+      })
     );
-  });
+  }
 }
 
 function safeSetToStorage(
@@ -43,7 +58,16 @@ function safeSetToStorage(
   onFailure = () => { alert('❌ Cache is full. Cannot save new data.'); },
   maxRetries = 4
 ) {
-  attemptSet(data, onSuccess, onFailure, maxRetries);
+  serializeStorageOperation(() =>
+    new Promise((resolve) => {
+      attemptSet(
+        data, 
+        () => { onSuccess(); resolve(); }, 
+        () => { onFailure(); resolve(); }, 
+        maxRetries
+      );
+    })
+  );
 }
 
 function attemptSet(data, onSuccess, onFailure, remainingRetries) {
