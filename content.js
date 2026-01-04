@@ -76,7 +76,7 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
       selectedText.length <= MAX_WORD_LENGTH
     ) {
       console.log("📦 Loading panel for:", selectedText);
-      if (!panel) {
+      if (!panel || !document.body.contains(panel)) {
         createPanel();
       } else {
         updatePanel();
@@ -85,7 +85,7 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
   }
 
   function createPanel() {
-    if (panel) return;
+    if (panel && document.body.contains(panel)) return;
     console.log("Creating panel");
 
     chrome.storage.local.get({ allowedSites: [] }, ({ allowedSites }) => {
@@ -149,12 +149,9 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
         changeStyleZoom(grammarTab, grammarScale);
       });
 
-      const link = document.createElement("link");
-      link.rel = "stylesheet";
-      link.href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css";
-
+      injectFACSS();
+      injectPanelCSS();
       document.body.appendChild(panel);
-      document.head.appendChild(link);
 
       // 🖱️ Add tab switch logic
       panel.querySelectorAll(".tab-btn").forEach((btn) => {
@@ -172,6 +169,26 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
 
       updatePanel();
     });
+  }
+
+  function injectPanelCSS() {
+    if (document.querySelector('link[data-jisho-panel-css]')) return;
+
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = chrome.runtime.getURL("panel.css");
+    link.dataset.jishoPanelCss = "true";
+    document.head.appendChild(link);
+  }
+
+  function injectFACSS() {
+    if (document.querySelector('link[data-jisho-fa]')) return;
+
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css";
+    link.dataset.jishoFa = "true";
+    document.head.appendChild(link);
   }
 
   function getActiveTab() {

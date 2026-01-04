@@ -11,13 +11,13 @@
   box-shadow: -2px 0 5px rgba(0,0,0,0.2);
 }
 
-#jisho-tab-bar {
+#jisho-panel #jisho-tab-bar {
   display: flex;
   border-bottom: 1px solid #ccc;
   background: #f4f4f4;
 }
 
-.tab-btn {
+#jisho-panel .tab-btn {
   flex: 1;
   padding: 8px;
   border: none;
@@ -26,27 +26,27 @@
   font-weight: bold;
 }
 
-.tab-btn.active {
+#jisho-panel .tab-btn.active {
   background: #fff;
   border-bottom: 2px solid dodgerblue;
 }
 
-.tab-content {
+#jisho-panel .tab-content {
   display: none;
   height: calc(100vh - 40px); /* account for tab bar */
 }
 
-.tab-content.active {
+#jisho-panel .tab-content.active {
   display: block;
 }
 
-#jisho-iframe {
+#jisho-panel #jisho-iframe {
   width: 100%;
   height: 100%;
   border: none;
 }
 
-#grammar-tab {
+#jisho-panel #grammar-tab {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -55,18 +55,18 @@
   white-space: pre-wrap;
 }
 
-#grammar-response,
-#cached-words {
+#jisho-panel #grammar-response,
+#jisho-panel #cached-words {
   flex-shrink: 0;
   padding: 8px;
 }
 
-#grammar-response button {
+#jisho-panel #grammar-response button {
   display: block;
   margin-bottom: 6px;
 }
 
-.grammar-result {
+#jisho-panel .grammar-result {
   position: relative;
   background: transparent;
   border: none;
@@ -75,12 +75,12 @@
   transition: background-color 0.2s ease;
 }
 
-.grammar-result:hover {
+#jisho-panel .grammar-result:hover {
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
 }
 
 /* Delete button – hidden by default */
-.delete-btn {
+#jisho-panel .delete-btn {
   position: absolute;
   top: 6px;
   right: 6px;
@@ -103,18 +103,18 @@
 }
 
 /* Show button on hover */
-.grammar-result:hover .delete-btn {
+#jisho-panel .grammar-result:hover .delete-btn {
   opacity: 1;
   visibility: visible;
   transform: scale(1);
 }
 
 /* Hovering directly over button */
-.delete-btn:hover {
+#jisho-panel .delete-btn:hover {
   background-color: #e53935;
 }
 
-.fade-out {
+#jisho-panel .fade-out {
   opacity: 0;
   transform: scale(0.97);
   transition: opacity 0.2s ease, transform 0.2s ease;
