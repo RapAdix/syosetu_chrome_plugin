@@ -243,20 +243,26 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
         responseBox.textContent = `❔ No cached response found for ${marked}.\n`;
       }
 
+      const buttonRow = document.createElement("div");
+      buttonRow.className = "ask-btn-row";
+      responseBox.appendChild(buttonRow);
+
       // Create word button if not cached
       if (!wordResponse) {
-        createAskButton("Ask about selected word", () => {
+        const button = createAskButton("Ask about selected word", "word-btn", () => {
           console.log("Ask about Word was pressed:", marked, "sentece:", sentence);
           askAI(explainWordKey, sentence, marked, index);
         });
+        buttonRow.appendChild(button);
       }
 
       // Create sentence button if not cached
       if (!sentenceResponse) {
-        createAskButton("Ask about whole sentence", () => {
+        const button = createAskButton("Ask about whole sentence", "sentence-btn", () => {
           console.log("Ask about Sentence was pressed:", sentence);
           askAI(explainSentenceKey, sentence, null, null);
         });
+        buttonRow.appendChild(button);
       }
 
       if (!wordResponse) {
@@ -281,6 +287,9 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
   function showCachedWords(cachedWords) {
     const container = document.getElementById("cached-words");
     container.innerHTML = "<p>📚 Cached words:</p>";
+    const buttonRow = document.createElement("div");
+    buttonRow.className = "cache-word-row";
+    container.appendChild(buttonRow);
 
     cachedWords.forEach(({word, reply, index, key}) => {
       const btn = document.createElement("button");
@@ -291,20 +300,21 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
         responseBox.textContent = "";
         responseBox.appendChild(wordResult);
       });
-      container.appendChild(btn);
+      btn.classList.add("grammar-action-btn", "cache-word-btn");
+      buttonRow.appendChild(btn);
     });
   }
 
-  function createAskButton(label, onClick) {
+  function createAskButton(label, className, onClick) {
     const button = document.createElement('button');
     button.textContent = label;
-    button.style.margin = '5px';
+    button.classList.add("grammar-action-btn", className);
     button.addEventListener('click', () => {
       button.disabled = true;
       button.textContent = '💬 Asking...';
       onClick();
     });
-    document.getElementById("grammar-response").appendChild(button);
+    return button;
   }
 
   function createFaDeleteButton(onClick) {

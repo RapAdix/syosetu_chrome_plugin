@@ -61,11 +61,6 @@
   padding: 8px;
 }
 
-#jisho-panel #grammar-response button {
-  display: block;
-  margin-bottom: 6px;
-}
-
 #jisho-panel .grammar-result {
   position: relative;
   background: transparent;
@@ -118,4 +113,89 @@
   opacity: 0;
   transform: scale(0.97);
   transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+/* Layout only */
+#jisho-panel .ask-btn-row {
+  display: flex;
+  flex-direction: column;   /* stack vertically */
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+#jisho-panel .ask-btn-row button {
+  flex: 1;
+  width: 220px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Base button style */
+#jisho-panel .grammar-action-btn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    transform 0.1s ease,
+    box-shadow 0.2s ease;
+}
+
+/* Click feedback */
+#jisho-panel .grammar-action-btn:active {
+  transform: scale(0.97);
+}
+
+#jisho-panel .grammar-action-btn:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+/* Ask about word button */
+#jisho-panel .word-btn {
+  background-color: #e3f2fd;
+  color: #1565c0;
+}
+
+#jisho-panel .word-btn:hover {
+  background-color: #bbdefb;
+  box-shadow: 0 2px 6px rgba(21, 101, 192, 0.25);
+}
+
+/* Ask about sentence button */
+#jisho-panel .sentence-btn {
+  background-color: #f3e5f5;
+  color: #6a1b9a;
+}
+
+#jisho-panel .sentence-btn:hover {
+  background-color: #e1bee7;
+  box-shadow: 0 2px 6px rgba(106, 27, 154, 0.25);
+}
+
+#jisho-panel .cache-word-row {
+  display: flex;
+  flex-direction: column;   /* stack vertically */
+  align-items: start;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+#jisho-panel #cached-words button {
+  flex: 1;
+}
+
+/* Display word response from cache */
+#jisho-panel .cache-word-btn {
+  background-color: #e7f2fb;
+  color: #072c57;
+  padding: 5px 12px;
+  font-weight: 450;
+}
+
+#jisho-panel .cache-word-btn:hover {
+  background-color: #bbdefb;
+  box-shadow: 0 2px 6px rgba(21, 101, 192, 0.25);
 }
