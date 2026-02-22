@@ -5,10 +5,10 @@
     <link rel="stylesheet" href="popup.css">
   </head>
   <body>
-    <div id="mainMenu" style="width: 130px;">
+    <div id="mainMenu" style="width: 148px;">
       <div class="settings-group">
         <div class="switch-container">
-          <span class="switch-text">Turn on Jisho Helper</span>
+          <span class="switch-text">Turn on Jisho Assistant</span>
           <label class="switch-label switch">
             <input type="checkbox" id="jishoSwitch">
             <span class="slider"></span>
@@ -30,7 +30,7 @@
           <label>Enabled sites:</label>
           <textarea id="allowedSitesInput"></textarea>
 
-          <button id="saveAllowedSitesButton">Save</button>
+          <button class="settings-action-btn" id="saveAllowedSitesButton">Save</button>
         </div>
       </div>
 
@@ -51,10 +51,10 @@
         </label>
       </div>
 
-      <div class="settings-buttons">
-        <button id="clearCacheButton">Clear Cache</button>
-        <button id="resetSettingsButton">Reset Settings</button>
-        <button id="apiSettingsButton">Api Keys settings</button>
+      <div class="btn-row">
+        <button class="settings-action-btn" id="clearCacheButton">Clear Cache</button>
+        <button class="settings-action-btn" id="resetSettingsButton">Reset Settings</button>
+        <button class="settings-action-btn" id="apiSettingsButton">Api Keys settings</button>
       </div>
 
     </div>
@@ -64,13 +64,13 @@
         rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
       />
-      <button id="backToMainButton"><i class="fa fa-arrow-left"></i> Back</button>
+      <button class="settings-action-btn" id="backToMainButton"><i class="fa fa-arrow-left"></i> Back</button>
 
       <h3>API Keys</h3>
       <div>
         <label>OpenAI Key:</label>
         <div style="position: relative; margin-top: 5px;">
-          <input type="password" id="openaiApiKey" placeholder="sk-..." style="padding-right: 35px;"/>
+          <input type="password" id="openaiApiKey" placeholder="sk-..." style="padding: 2px 35px 5px 6px;"/>
           <button type="button" id="toggleOpenaiKey" 
                   style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
                         background: transparent; border: none; cursor: pointer; padding: 5px;">
@@ -82,7 +82,7 @@
       <div>
         <label>Gemini Key:</label>
         <div style="position: relative; margin-top: 5px;">
-          <input type="password" id="geminiApiKey" placeholder="..." style="padding-right: 35px;"/>
+          <input type="password" id="geminiApiKey" placeholder="..." style="padding: 2px 35px 5px 6px;"/>
           <button type="button" id="toggleGeminiKey" 
                   style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
                         background: transparent; border: none; cursor: pointer; padding: 5px;">
@@ -97,8 +97,8 @@
         <select id="providerSelect"></select>
       </div>
 
-      <button id="saveKeys">Save Keys</button>
-      <button id="deleteKeys">Delete Keys</button>
+      <button class="settings-action-btn" id="saveKeys">Save Keys</button>
+      <button class="settings-action-btn" id="deleteKeys">Delete Keys</button>
     </div>
     <div id="statusMessage"></div>
 

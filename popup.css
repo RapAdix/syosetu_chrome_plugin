@@ -93,18 +93,127 @@ input:checked + .slider::before {
   margin-bottom: 9px;
 }
 
-.settings-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
+/* ===== Modern input fields ===== */
+
+input {
+  width: 100%;
+  padding: 0 10px 2px;
+
+  font-size: 13px;
+  font-family: inherit;
+
+  color: #222;
+  background: #fff;
+
+  border: 1px solid #e3e6ea;
+  border-radius: 8px;
+
+  outline: none;
+  box-sizing: border-box;
+
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
 }
-.settings-buttons button {
-  width: 100px;
+
+input[type="number"] {
+  height: 26px;
+}
+
+/* hover */
+input:hover {
+  border-color: #cfd6dd;
+}
+
+/* focus — modern blue glow */
+input:focus {
+  border-color: #4c8bf5;
+  box-shadow: 0 0 0 3px rgba(76, 139, 245, 0.15);
+}
+
+/* optional: softer disabled look */
+input:disabled {
+  background: #f5f6f8;
+  color: #999;
+  cursor: not-allowed;
+}
+
+#apiSettings > div {
+  margin-bottom: 9px;
+}
+
+#apiSettings h3 {
+  text-align: center;
+  margin: 6px 0 14px 0; /* small top gap, bigger bottom gap */
+}
+
+#backToMainButton {
+  margin-bottom: 4px;
+}
+
+/* Layout only */
+.btn-row {
+  display: flex;
+  flex-direction: row;   /* stack vertically */
+  align-items: start;
+  gap: 7px;
+  margin-top: 8px;
 }
 
 /* Stack vertically if width */
-@media (max-width: 350px) {
-  .settings-buttons {
+@media (max-width: 420px) {
+  .btn-row {
     flex-direction: column;
+    align-items: center;
   }
+}
+
+.btn-row button {
+  flex: 1;
+  width: 138px;
+  font-weight: 450;
+}
+
+/* Base button style */
+.settings-action-btn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    transform 0.1s ease,
+    box-shadow 0.2s ease;
+}
+
+.settings-action-btn:active {
+  transform: scale(0.97);
+}
+
+.settings-action-btn:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+#deleteKeys {
+  font-weight: 650;
+  background-color: #ffcaca;
+  color: #ae0909;
+}
+
+#deleteKeys:hover {
+  background-color: #f7adad;
+  box-shadow: 0 2px 6px rgba(192, 21, 21, 0.25);
+}
+
+#saveKeys {
+  font-weight: 650;
+  background-color: #caffcd;
+  color: #09ae14;
+}
+
+#saveKeys:hover {
+  background-color: #adf7af;
+  box-shadow: 0 2px 6px rgba(21, 192, 67, 0.25);
 }
