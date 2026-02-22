@@ -95,9 +95,11 @@ input:checked + .slider::before {
 
 /* ===== Modern input fields ===== */
 
-input {
+.settings-field {
   width: 100%;
+  min-height: 26px;
   padding: 0 10px 2px;
+  margin-top: 1px;
 
   font-size: 13px;
   font-family: inherit;
@@ -117,26 +119,31 @@ input {
     background-color 0.15s ease;
 }
 
-input[type="number"] {
-  height: 26px;
-}
-
 /* hover */
-input:hover {
+.settings-field:hover {
   border-color: #cfd6dd;
 }
 
 /* focus — modern blue glow */
-input:focus {
+.settings-field:focus {
   border-color: #4c8bf5;
   box-shadow: 0 0 0 3px rgba(76, 139, 245, 0.15);
 }
 
 /* optional: softer disabled look */
-input:disabled {
+.settings-field:disabled {
   background: #f5f6f8;
   color: #999;
   cursor: not-allowed;
+}
+
+#allowedSitesInput {
+  padding: 0 0 0 3px;
+}
+
+#providerSelect {
+  width: auto;
+  padding: 0 8px 3px 4px;
 }
 
 #apiSettings > div {

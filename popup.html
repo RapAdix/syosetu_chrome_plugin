@@ -28,7 +28,7 @@
 
         <div id="siteListDropdown" class="dropdown-hidden">
           <label>Enabled sites:</label>
-          <textarea id="allowedSitesInput"></textarea>
+          <textarea class="settings-field" id="allowedSitesInput"></textarea>
 
           <button class="settings-action-btn" id="saveAllowedSitesButton">Save</button>
         </div>
@@ -37,17 +37,17 @@
       <div class="settings-group">
         <label>
           Panel width (% of view): 
-          <input type="number" id="panelWidthInput" min="10" max="90">
+          <input type="number" class="settings-field" id="panelWidthInput" min="10" max="90">
         </label>
 
         <label>
           Jisho content scale (%): 
-          <input type="number" id="jishoScaleInput" min="50" max="200">
+          <input type="number" class="settings-field" id="jishoScaleInput"min="50" max="200">
         </label>
 
         <label>
           Grammar content scale (%): 
-          <input type="number" id="grammarScaleInput" min="50" max="200">
+          <input type="number" class="settings-field" id="grammarScaleInput" min="50" max="200">
         </label>
       </div>
 
@@ -69,8 +69,8 @@
       <h3>API Keys</h3>
       <div>
         <label>OpenAI Key:</label>
-        <div style="position: relative; margin-top: 5px;">
-          <input type="password" id="openaiApiKey" placeholder="sk-..." style="padding: 2px 35px 5px 6px;"/>
+        <div style="position: relative; margin-top: 3px;">
+          <input type="password" id="openaiApiKey" placeholder="sk-..." class="settings-field" style="padding: 2px 35px 5px 6px;"/>
           <button type="button" id="toggleOpenaiKey" 
                   style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
                         background: transparent; border: none; cursor: pointer; padding: 5px;">
@@ -81,8 +81,8 @@
 
       <div>
         <label>Gemini Key:</label>
-        <div style="position: relative; margin-top: 5px;">
-          <input type="password" id="geminiApiKey" placeholder="..." style="padding: 2px 35px 5px 6px;"/>
+        <div style="position: relative; margin-top: 3px;">
+          <input type="password" id="geminiApiKey" placeholder="..." class="settings-field" style="padding: 2px 35px 5px 6px;"/>
           <button type="button" id="toggleGeminiKey" 
                   style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
                         background: transparent; border: none; cursor: pointer; padding: 5px;">
@@ -94,7 +94,7 @@
 
       <div>
         <label>Use provider:</label>
-        <select id="providerSelect"></select>
+        <select class="settings-field" id="providerSelect"></select>
       </div>
 
       <button class="settings-action-btn" id="saveKeys">Save Keys</button>
