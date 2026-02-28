@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Japanese Reading Assistant - Jisho in Side Panel",
-  "version": "1.4",
+  "version": "2.0",
   "description": "Quickly look up Japanese words with Jisho in a side panel. Highlight text to get dictionary results, and grammar help.",
   "permissions": ["storage", "activeTab"],
   "host_permissions": [
