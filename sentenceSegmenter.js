@@ -91,6 +91,10 @@ const SentenceTools = {
   },
 
   getSentenceSuffix(currentNode, offset, depth) {
+    if (depth === undefined) {
+      depth = SentenceTools.getDepth(currentNode, offset);
+      console.debug(`Depth for the ending of the word was found to be: ${depth}`)
+    }
     const ends = "。！？.!?";
     const visibleNodes = SentenceTools.walkVisibleTextNodes(currentNode);
     const nextPart = visibleNodes.map(n => n.textContent).join("");
@@ -135,6 +139,10 @@ const SentenceTools = {
   },
 
   getSentencePrefix(currentNode, offset, depth) {
+    if (depth === undefined) {
+      depth = SentenceTools.getDepth(currentNode, offset);
+      console.debug(`Depth for the beginning of the word was found to be: ${depth}`)
+    }
     const ends = "。！？.!?";
     const visibleNodes = SentenceTools.walkVisibleTextNodes(currentNode);
     const prevPart = visibleNodes.map(n => n.textContent).join("");
@@ -163,6 +171,28 @@ const SentenceTools = {
         console.debug(`Prefix finding continues, this part: ${prevPart.slice(0, offset)}`)
         return SentenceTools.getSentencePrefix(SentenceTools.getPrevNode(currentNode), -1, depth) + prevPart.slice(0, offset);
       }
+    }
+  },
+
+  getDepth(currentNode, offset) {
+    const visibleNodes = SentenceTools.walkVisibleTextNodes(currentNode);
+    const prevPart = visibleNodes.map(n => n.textContent).join("");
+    if (offset === -1) offset = prevPart.length;
+    let depth = 0;
+    for (let i = offset - 1; i >= 0; i--) {
+      const c = prevPart[i];
+
+      if (c === "「") depth++;
+      if (c === "」") depth--;
+    }
+    
+    const prevNode = SentenceTools.getPrevNode(currentNode);
+    if (SentenceTools.getClosestP(currentNode) != SentenceTools.getClosestP(prevNode)) {
+      console.debug(`Depth finding finished because of the paragraph end, last depth: ${depth}`)
+      return depth;
+    } else {
+      console.debug(`Depth finding continues, this depth: ${depth}`)
+      return SentenceTools.getDepth(SentenceTools.getPrevNode(currentNode), -1) + depth;
     }
   },
 
@@ -231,18 +261,26 @@ const SentenceTools = {
     let inside = SentenceTools.getSelection();
 
     if (endNode.nodeType === Node.TEXT_NODE) {
-      after = SentenceTools.getSentenceSuffix(endNode, endOffset, 0);
+      after = SentenceTools.getSentenceSuffix(endNode, endOffset);
     } else {
-      const nextNode = SentenceTools.getNextNode(endNode.childNodes[endOffset - 1]);
-      after = SentenceTools.getSentenceSuffix(nextNode, 0, 0);
+      let nextNode;
+      if (endOffset < endNode.childNodes.length)
+        nextNode = endNode.childNodes[endOffset];
+      else
+        nextNode = SentenceTools.getNextNode(endNode);
+      after = SentenceTools.getSentenceSuffix(nextNode, 0);
     }
     console.log(`after: ${after}`);
 
     if (startNode.nodeType === Node.TEXT_NODE) {
-      before = SentenceTools.getSentencePrefix(startNode, startOffset, 0);
+      before = SentenceTools.getSentencePrefix(startNode, startOffset);
     } else {
-      const prevNode = SentenceTools.getPrevNode(startNode.childNodes[startOffset]);
-      before = SentenceTools.getSentencePrefix(prevNode, -1, 0);
+      let prevNode;
+      if (startOffset > 0)
+        prevNode = startNode.childNodes[startOffset - 1];
+      else
+        prevNode = SentenceTools.getPrevNode(startNode);
+      before = SentenceTools.getSentencePrefix(prevNode, -1);
     }
     console.log(`before: ${before}`);
 
