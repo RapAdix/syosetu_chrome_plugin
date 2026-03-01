@@ -91,10 +91,6 @@ const SentenceTools = {
   },
 
   getSentenceSuffix(currentNode, offset, depth) {
-    if (depth === undefined) {
-      depth = SentenceTools.getDepth(currentNode, offset);
-      console.debug(`Depth for the ending of the word was found to be: ${depth}`)
-    }
     const ends = "。！？.!?";
     const visibleNodes = SentenceTools.walkVisibleTextNodes(currentNode);
     const nextPart = visibleNodes.map(n => n.textContent).join("");
@@ -139,10 +135,6 @@ const SentenceTools = {
   },
 
   getSentencePrefix(currentNode, offset, depth) {
-    if (depth === undefined) {
-      depth = SentenceTools.getDepth(currentNode, offset);
-      console.debug(`Depth for the beginning of the word was found to be: ${depth}`)
-    }
     const ends = "。！？.!?";
     const visibleNodes = SentenceTools.walkVisibleTextNodes(currentNode);
     const prevPart = visibleNodes.map(n => n.textContent).join("");
@@ -174,26 +166,17 @@ const SentenceTools = {
     }
   },
 
-  getDepth(currentNode, offset) {
-    const visibleNodes = SentenceTools.walkVisibleTextNodes(currentNode);
-    const prevPart = visibleNodes.map(n => n.textContent).join("");
-    if (offset === -1) offset = prevPart.length;
+  getRelativeDepth(text) {
     let depth = 0;
-    for (let i = offset - 1; i >= 0; i--) {
-      const c = prevPart[i];
+    let minDepth = 0; // in case that text = "part of dialog1」narrator 「part of dialog2"
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
 
       if (c === "「") depth++;
       if (c === "」") depth--;
+      if (depth < minDepth) minDepth = depth;
     }
-    
-    const prevNode = SentenceTools.getPrevNode(currentNode);
-    if (SentenceTools.getClosestP(currentNode) != SentenceTools.getClosestP(prevNode)) {
-      console.debug(`Depth finding finished because of the paragraph end, last depth: ${depth}`)
-      return depth;
-    } else {
-      console.debug(`Depth finding continues, this depth: ${depth}`)
-      return SentenceTools.getDepth(SentenceTools.getPrevNode(currentNode), -1) + depth;
-    }
+    return {depthLeft: -minDepth, depthRight: depth - minDepth};
   },
 
   getSelection() {
@@ -259,29 +242,38 @@ const SentenceTools = {
     let before = "";
     let after = "";
     let inside = SentenceTools.getSelection();
+    let {depthLeft, depthRight} = SentenceTools.getRelativeDepth(inside);
+    console.debug(`Depth for the beginning of the word was found to be: ${depthLeft}`)
+    console.debug(`Depth for the ending of the word was found to be: ${depthRight}`)
 
+    let realEndNode;
+    let realStartNode;
+    let realEndOffset;
+    let realStartOffset;
     if (endNode.nodeType === Node.TEXT_NODE) {
-      after = SentenceTools.getSentenceSuffix(endNode, endOffset);
+      realEndNode = endNode;
+      realEndOffset = endOffset;
     } else {
-      let nextNode;
       if (endOffset < endNode.childNodes.length)
-        nextNode = endNode.childNodes[endOffset];
+        realEndNode = endNode.childNodes[endOffset];
       else
-        nextNode = SentenceTools.getNextNode(endNode);
-      after = SentenceTools.getSentenceSuffix(nextNode, 0);
+        realEndNode = SentenceTools.getNextNode(endNode);
+      realEndOffset = 0;
     }
+    after = SentenceTools.getSentenceSuffix(realEndNode, realEndOffset, depthRight);
     console.log(`after: ${after}`);
 
     if (startNode.nodeType === Node.TEXT_NODE) {
-      before = SentenceTools.getSentencePrefix(startNode, startOffset);
+      realStartNode = startNode;
+      realStartOffset = startOffset;
     } else {
-      let prevNode;
       if (startOffset > 0)
-        prevNode = startNode.childNodes[startOffset - 1];
+        realStartNode = startNode.childNodes[startOffset - 1];
       else
-        prevNode = SentenceTools.getPrevNode(startNode);
-      before = SentenceTools.getSentencePrefix(prevNode, -1);
+        realStartNode = SentenceTools.getPrevNode(startNode);
+      realStartOffset = -1;
     }
+    before = SentenceTools.getSentencePrefix(realStartNode, realStartOffset, depthLeft);
     console.log(`before: ${before}`);
 
     return {sentence: before + inside + after, index: before.length};
