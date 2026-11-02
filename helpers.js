@@ -43,7 +43,7 @@ function safeSetToStorageWithList(cacheKey, html) {
               jisho_cache_list: list,
             },
             () => { console.log('💾 Cached response for:', cacheKey); resolve(); }, 
-            () => { alert('❌ Cache is full. Cannot save new response.'); resolve(); },
+            () => { if (typeof alert !== "undefined") alert('❌ Cache is full. Cannot save new response.'); resolve(); }, // avoid alert ReferenceError in worker
             4
           );
         });
@@ -55,7 +55,7 @@ function safeSetToStorageWithList(cacheKey, html) {
 function safeSetToStorage(
   data,
   onSuccess = () => {},
-  onFailure = () => { alert('❌ Cache is full. Cannot save new data.'); },
+  onFailure = () => { if (typeof alert !== "undefined") alert('❌ Cache is full. Cannot save new data.'); },
   maxRetries = 4
 ) {
   serializeStorageOperation(() =>
@@ -113,7 +113,7 @@ function trimJishoCache(callback) {
     let list = res.jisho_cache_list || [];
     if (list.length === 0) {
       console.error("🚨 Jisho cache is already empty. Cannot trim further.");
-      alert("❗ Cache full and no Jisho entries to delete.");
+      if (typeof alert !== "undefined") alert("❗ Cache full and no Jisho entries to delete."); // avoid alert ReferenceError in worker
       if (callback) callback();
       return;
     }
@@ -196,4 +196,14 @@ function logJishoCacheSize() {
 
     console.debug(`📦 Estimated cache size: ${totalKB.toFixed(2)} KB`);
   });
+}
+
+function sanitizeApiKey(key) {
+  if (typeof key !== "string") return "";
+  return key.trim().replace(/[\s\r\n\t\x00-\x1F\x7F-\x9F]/g, "").slice(0, 256);
+}
+
+function sanitizeModelName(model) {
+  if (typeof model !== "string") return "";
+  return model.trim().replace(/[^a-zA-Z0-9_.:/-]/g, "").slice(0, 100);
 }

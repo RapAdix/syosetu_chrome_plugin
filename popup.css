@@ -141,9 +141,19 @@ input:checked + .slider::before {
   padding: 0 0 0 3px;
 }
 
-#providerSelect {
-  width: auto;
+#providerSelect,
+#modelSelect {
+  width: 100%;
   padding: 0 8px 3px 4px;
+}
+
+.fa-spin {
+  animation: fa-spin 1s infinite linear;
+}
+
+@keyframes fa-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 #apiSettings > div {

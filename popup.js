@@ -235,8 +235,12 @@ loadKey(openaiApiKeyInput, "openaiApiKey");
 loadKey(geminiApiKeyInput, "geminiApiKey");
 
 saveApiKeyButton.addEventListener("click", () => {
-  const openaiKey = openaiApiKeyInput.value.trim();
-  const geminiKey = geminiApiKeyInput.value.trim();
+  const openaiKey = sanitizeApiKey(openaiApiKeyInput.value);
+  const geminiKey = sanitizeApiKey(geminiApiKeyInput.value);
+
+  openaiApiKeyInput.value = openaiKey;
+  geminiApiKeyInput.value = geminiKey;
+
   let keys = {};
   if (openaiKey) {
     keys["openaiApiKey"] = openaiKey;
@@ -245,13 +249,29 @@ saveApiKeyButton.addEventListener("click", () => {
     keys["geminiApiKey"] = geminiKey;
   }
   
+  const provider = providerSelect.value;
+  const modelKey = getModelStorageKey(provider);
+  const rawModel = modelSelect.value === "__custom__"
+    ? customModelInput.value
+    : modelSelect.value;
+  const currentModel = sanitizeModelName(rawModel);
+  if (currentModel) {
+    keys[modelKey] = currentModel;
+    if (modelSelect.value === "__custom__") {
+      customModelInput.value = currentModel;
+    }
+  }
+
   if (!Object.keys(keys).length) {
     statusMessage.textContent = "Please enter a valid API key.";
     return;
   }
 
   safeSetToStorage(keys, () => {
-    statusMessage.textContent = "API key saved!";
+    statusMessage.textContent = "API key & model saved!";
+    if (openaiKey) fetchModelsFromProvider(PROVIDERS.openAI, false);
+    if (geminiKey) fetchModelsFromProvider(PROVIDERS.gemini, false);
+    if (!openaiKey && !geminiKey) fetchModelsFromProvider(provider, false);
     setTimeout(() => (statusMessage.textContent = ""), 2000);
   });
 });
@@ -265,6 +285,218 @@ toggleGeminiInputBtn.addEventListener("click", () => {
 });
 
 const providerSelect = document.getElementById("providerSelect");
+const modelSelect = document.getElementById("modelSelect");
+const customModelInput = document.getElementById("customModelInput");
+const refreshModelsBtn = document.getElementById("refreshModelsBtn");
+const modelStatusNotice = document.getElementById("modelStatusNotice");
+
+function showModelNotice(msg) {
+  if (modelStatusNotice) {
+    modelStatusNotice.textContent = msg;
+    modelStatusNotice.style.display = "block";
+  }
+}
+
+function hideModelNotice() {
+  if (modelStatusNotice) {
+    modelStatusNotice.textContent = "";
+    modelStatusNotice.style.display = "none";
+  }
+}
+
+openaiApiKeyInput.addEventListener("input", () => {
+  if (providerSelect.value === PROVIDERS.openAI && openaiApiKeyInput.value.trim()) {
+    hideModelNotice();
+  }
+});
+
+geminiApiKeyInput.addEventListener("input", () => {
+  if (providerSelect.value === PROVIDERS.gemini && geminiApiKeyInput.value.trim()) {
+    hideModelNotice();
+  }
+});
+
+function getModelStorageKey(provider) {
+  return provider === PROVIDERS.gemini ? "geminiModel" : "openaiModel";
+}
+
+function getModelCacheKey(provider) {
+  return provider === PROVIDERS.gemini ? "cachedGeminiModels" : "cachedOpenaiModels";
+}
+
+function renderModelDropdown(provider, modelList, selectedModel, placeholderText = null) {
+  modelSelect.innerHTML = "";
+  
+  const models = modelList || [];
+  
+  if (models.length === 0) {
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = placeholderText || "(Enter API key above)";
+    modelSelect.appendChild(placeholder);
+  } else {
+    models.forEach((m) => {
+      const opt = document.createElement("option");
+      opt.value = m;
+      opt.textContent = m;
+      modelSelect.appendChild(opt);
+    });
+  }
+
+  const customOpt = document.createElement("option");
+  customOpt.value = "__custom__";
+  customOpt.textContent = "Custom...";
+  modelSelect.appendChild(customOpt);
+
+  const targetModel = selectedModel || (models.length > 0 ? models[0] : "");
+  if (models.includes(targetModel)) {
+    modelSelect.value = targetModel;
+    customModelInput.style.display = "none";
+  } else if (targetModel) {
+    modelSelect.value = "__custom__";
+    customModelInput.value = targetModel;
+    customModelInput.style.display = "block";
+  } else {
+    modelSelect.value = models[0] || "";
+    customModelInput.style.display = "none";
+  }
+}
+
+function loadProviderModelsAndSelection(provider, fetchLive = false) {
+  hideModelNotice();
+  const modelKey = getModelStorageKey(provider);
+  const cacheKey = getModelCacheKey(provider);
+
+  chrome.storage.local.get([modelKey, cacheKey], (result) => {
+    const cachedModels = result[cacheKey] || [];
+    let savedModel = result[modelKey];
+    if (cachedModels.length > 0 && (!savedModel || !cachedModels.includes(savedModel))) {
+      savedModel = cachedModels[0];
+    }
+
+    renderModelDropdown(provider, cachedModels, savedModel, cachedModels.length === 0 ? "Loading models..." : null);
+
+    // If fetchLive is requested or no models are cached yet, fetch from provider
+    if (fetchLive || cachedModels.length === 0) {
+      fetchModelsFromProvider(provider, false);
+    }
+  });
+}
+
+function fetchModelsFromProvider(provider, isManual = false) {
+  const isCurrentProvider = providerSelect.value === provider;
+  const icon = (isCurrentProvider && refreshModelsBtn) ? refreshModelsBtn.querySelector("i") : null;
+  if (icon) icon.classList.add("fa-spin");
+  if (isCurrentProvider && refreshModelsBtn) refreshModelsBtn.disabled = true;
+
+  chrome.runtime.sendMessage({ type: "fetchAvailableModels", provider }, (response) => {
+    if (icon) icon.classList.remove("fa-spin");
+    if (refreshModelsBtn) refreshModelsBtn.disabled = false;
+
+    if (chrome.runtime.lastError) {
+      console.warn("fetchAvailableModels error:", chrome.runtime.lastError.message);
+      if (isManual && providerSelect.value === provider) {
+        statusMessage.textContent = "Error fetching models.";
+        setTimeout(() => { statusMessage.textContent = ""; }, 2500);
+      }
+      return;
+    }
+
+    if (response && response.ok && Array.isArray(response.models) && response.models.length > 0) {
+      if (providerSelect.value === provider) {
+        hideModelNotice();
+      }
+      const cacheKey = getModelCacheKey(provider);
+      const modelKey = getModelStorageKey(provider);
+
+      chrome.storage.local.get(modelKey, (res) => {
+        let currentSaved = res[modelKey];
+        // If current model is missing or no longer on the list of available models, pick new one
+        if (!currentSaved || !response.models.includes(currentSaved)) {
+          if (modelSelect.value === "__custom__" && customModelInput.value.trim()) {
+            currentSaved = customModelInput.value.trim();
+          } else {
+            currentSaved = response.selectedModel;
+          }
+        }
+
+        const updates = {
+          [cacheKey]: response.models,
+          [modelKey]: currentSaved
+        };
+
+        safeSetToStorage(updates, () => {
+          if (providerSelect.value === provider) {
+            renderModelDropdown(provider, response.models, currentSaved);
+            if (isManual) {
+              statusMessage.textContent = `Updated ${provider} models!`;
+              setTimeout(() => { statusMessage.textContent = ""; }, 2000);
+            }
+          }
+        });
+      });
+    } else {
+      const cacheKey = getModelCacheKey(provider);
+      chrome.storage.local.get([cacheKey, getModelStorageKey(provider)], (res) => {
+        const cached = res[cacheKey] || [];
+        // Only update UI/notices if the user is currently viewing THIS provider
+        if (providerSelect.value === provider) {
+          if (cached.length === 0) {
+            renderModelDropdown(provider, [], res[getModelStorageKey(provider)], "(Enter API key above)");
+          }
+          if (response && response.noKey) {
+            showModelNotice(`⚠️ Enter ${provider === PROVIDERS.gemini ? "Gemini" : "OpenAI"} key above to load models`);
+          } else if (response && response.error) {
+            showModelNotice(`⚠️ ${response.error}`);
+          }
+          if (isManual && response && response.error) {
+            statusMessage.textContent = response.error;
+            setTimeout(() => { statusMessage.textContent = ""; }, 3000);
+          }
+        }
+      });
+    }
+  });
+}
+
+modelSelect.addEventListener("change", () => {
+  const provider = providerSelect.value;
+  const modelKey = getModelStorageKey(provider);
+
+  if (modelSelect.value === "__custom__") {
+    customModelInput.style.display = "block";
+    customModelInput.focus();
+    const clean = sanitizeModelName(customModelInput.value);
+    if (clean) {
+      customModelInput.value = clean;
+      safeSetToStorage({ [modelKey]: clean });
+    }
+  } else {
+    customModelInput.style.display = "none";
+    const chosen = sanitizeModelName(modelSelect.value);
+    safeSetToStorage({ [modelKey]: chosen }, () => {
+      console.log(`Saved ${provider} model:`, chosen);
+    });
+  }
+});
+
+customModelInput.addEventListener("input", () => {
+  const provider = providerSelect.value;
+  const modelKey = getModelStorageKey(provider);
+  const val = sanitizeModelName(customModelInput.value);
+  if (val !== customModelInput.value) {
+    customModelInput.value = val;
+  }
+  if (val) {
+    safeSetToStorage({ [modelKey]: val });
+  }
+});
+
+if (refreshModelsBtn) {
+  refreshModelsBtn.addEventListener("click", () => {
+    fetchModelsFromProvider(providerSelect.value, true);
+  });
+}
 
 // Clear any existing options
 providerSelect.innerHTML = "";
@@ -278,20 +510,22 @@ for (const [key, value] of Object.entries(window.Providers)) {
 }
 
 chrome.storage.local.get("providerAI", ({ providerAI }) => {
-  if (providerAI) {
-    providerSelect.value = providerAI;
-  } else {
-    providerSelect.value = PROVIDERS.openAI; // default
+  const currentProvider = providerAI || PROVIDERS.openAI;
+  providerSelect.value = currentProvider;
+  if (!providerAI) {
     safeSetToStorage({ providerAI: PROVIDERS.openAI });
   }
+  loadProviderModelsAndSelection(currentProvider, false);
 });
 
-// Save providerAI when changed
+// Save providerAI when changed and update models
 providerSelect.addEventListener("change", () => {
   const selected = providerSelect.value;
+  hideModelNotice();
   safeSetToStorage({ providerAI: selected }, () => {
     console.log("✅ providerAI saved:", selected);
   });
+  loadProviderModelsAndSelection(selected, false);
 });
 
 
@@ -306,6 +540,9 @@ apiSettingsButton.addEventListener("click", () => {
   mainMenu.style.display = "none";
   apiSettings.style.display = "block";
   document.body.style.width = "200px";
+  loadProviderModelsAndSelection(providerSelect.value, true);
+  const otherProvider = providerSelect.value === PROVIDERS.gemini ? PROVIDERS.openAI : PROVIDERS.gemini;
+  fetchModelsFromProvider(otherProvider, false);
 });
 
 backButton.addEventListener("click", () => {

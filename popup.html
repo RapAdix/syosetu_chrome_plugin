@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <meta charset="UTF-8">
     <title>Jisho Helper</title>
     <link rel="stylesheet" href="popup.css">
   </head>
@@ -66,7 +67,7 @@
       />
       <button class="settings-action-btn" id="backToMainButton"><i class="fa fa-arrow-left"></i> Back</button>
 
-      <h3>API Keys</h3>
+      <h3>API Keys & Models</h3>
       <div>
         <label>OpenAI Key:</label>
         <div style="position: relative; margin-top: 3px;">
@@ -91,10 +92,16 @@
         </div>
       </div>
 
-
       <div>
         <label>Use provider:</label>
         <select class="settings-field" id="providerSelect"></select>
+      </div>
+
+      <div>
+        <label>Model:</label>
+        <select class="settings-field" id="modelSelect"></select>
+        <input type="text" id="customModelInput" placeholder="Enter custom model..." class="settings-field" style="display: none; margin-top: 4px;" />
+        <div id="modelStatusNotice" style="font-size: 11px; color: #c5221f; margin-top: 4px; display: none;"></div>
       </div>
 
       <button class="settings-action-btn" id="saveKeys">Save Keys</button>
