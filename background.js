@@ -112,183 +112,191 @@ async function fetchLiveModels(provider, apiKey) {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "askAI") {
-    console.log("💬 Received ChatGPT request");
-    console.log("📌 Full sentence:", message.sentence);
-    console.log("🔍 Marked part:", message.marked);
-
-    const { sentence, marked, index } = message;
-
-    const prompt = marked
-      ? explainWordPrompt(sentence, marked, index)
-      : explainSentencePrompt(sentence);
-
-    console.log("📝 Prompt created:", prompt);
-
-    chrome.storage.local.get(
-      ["providerAI", "openaiApiKey", "geminiApiKey", "openaiModel", "geminiModel", "cachedOpenaiModels", "cachedGeminiModels"],
-      async (result) => {
-        let provider = result["providerAI"];
-        if (!provider) {
-          provider = PROVIDERS.openAI; // default
-          chrome.storage.local.set({ providerAI: provider });
-        }
-
-        const modelKey = provider === PROVIDERS.gemini ? "geminiModel" : "openaiModel";
-        const cacheKey = provider === PROVIDERS.gemini ? "cachedGeminiModels" : "cachedOpenaiModels";
-        const rawApiKey = provider === PROVIDERS.gemini
-          ? (result["geminiApiKey"] || (typeof GEMINI_API_KEY !== "undefined" ? GEMINI_API_KEY : ""))
-          : (result["openaiApiKey"] || (typeof OPENAI_API_KEY !== "undefined" ? OPENAI_API_KEY : ""));
-        const apiKey = sanitizeApiKey(rawApiKey);
-
-        if (!apiKey) {
-          sendResponse({ ok: false, reply: `❌ Error you didn't provide key for ${provider}` });
-          return;
-        }
-
-        let model = sanitizeModelName(result[modelKey]);
-        let cachedModels = result[cacheKey];
-
-        // If no model has been selected yet, or if cached models are missing, prefetch models now!
-        if (!model || !cachedModels || cachedModels.length === 0) {
-          try {
-            console.log(`🔍 Prefetching available models for ${provider}...`);
-            const liveModels = await fetchLiveModels(provider, apiKey);
-            if (liveModels && liveModels.length > 0) {
-              cachedModels = liveModels;
-              const updates = { [cacheKey]: liveModels };
-              if (!model || !liveModels.includes(model)) {
-                model = pickBestModel(provider, liveModels);
-                updates[modelKey] = model;
-                console.log(`✅ Selected and saved model for ${provider}: ${model}`);
-              }
-              chrome.storage.local.set(updates);
-            }
-          } catch (err) {
-            console.warn(`⚠️ Could not prefetch models for ${provider}:`, err);
-          }
-        }
-
-        // Ensure selected model is still available in the cached models list; otherwise pick a new one
-        if (!model || (cachedModels && cachedModels.length > 0 && !cachedModels.includes(model))) {
-          model = pickBestModel(provider, cachedModels || []);
-          chrome.storage.local.set({ [modelKey]: model });
-        }
-
-        let url = "";
-        let options = {};
-        if (provider === PROVIDERS.openAI) {
-          url = "https://api.openai.com/v1/chat/completions";
-          options = {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-              model: model,
-              messages: [{ role: "user", content: prompt }],
-              temperature: 0.5
-            })
-          };
-        } else if (provider === PROVIDERS.gemini) {
-          model = model.replace(/^models\//, "");
-          url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
-          options = {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-goog-api-key": apiKey
-            },
-            body: JSON.stringify({
-              contents: [
-                {
-                  parts: [
-                    {
-                      text: prompt
-                    }
-                  ]
-                }
-              ]
-            })
-          };
-        }
-
-        console.log("📤 Sending request to", provider, "API with model:", model);
-
-        fetch(url, options)
-          .then(res => handleResponse(res, sendResponse, provider))
-          .catch(err => {
-            console.error("❌ ", provider, "error:", err);
-            sendResponse({ ok: false, reply: `❌ Error contacting ${provider}.` });
-          });
-      }
-    );
-
-    // Required for async response
-    return true;
+    handleAskAI(message, sendResponse);
+    return true; // Required for async response
   }
-  
-  if (message.type === "fetchJisho") {
-    const url = `https://jisho.org/search/${encodeURIComponent(message.word)}`;
-    fetch(url)
-      .then((response) => {
-        if (!response.ok) {
-          return Promise.reject({ status:response.status });
-        }
-        return response.text();
-      })
-      .then((html) => {
-        sendResponse({ ok: true, reply: html });
-      })
-      .catch((error) => {
-        if (error.status) {
-          sendResponse({ ok: false, reply: `❌ Failed to load Jisho, status: ${error.status}` });
-        } else {
-          sendResponse({ ok: false, reply: error.message });
-        }
-      });
 
+  if (message.type === "fetchJisho") {
+    handleFetchJisho(message, sendResponse);
     return true; // Keep message channel open for async response
   }
 
   if (message.type === "fetchAvailableModels") {
-    const provider = message.provider;
-    chrome.storage.local.get(["openaiApiKey", "geminiApiKey", "openaiModel", "geminiModel"], async (result) => {
-      try {
-        const rawApiKey = provider === PROVIDERS.gemini
-          ? (result["geminiApiKey"] || (typeof GEMINI_API_KEY !== "undefined" ? GEMINI_API_KEY : ""))
-          : (result["openaiApiKey"] || (typeof OPENAI_API_KEY !== "undefined" ? OPENAI_API_KEY : ""));
-        const apiKey = sanitizeApiKey(rawApiKey);
-
-        if (!apiKey) {
-          sendResponse({ ok: false, error: `No ${provider} API key found.`, noKey: true });
-          return;
-        }
-
-        const models = await fetchLiveModels(provider, apiKey);
-        const modelKey = provider === PROVIDERS.gemini ? "geminiModel" : "openaiModel";
-        const cacheKey = provider === PROVIDERS.gemini ? "cachedGeminiModels" : "cachedOpenaiModels";
-        let selectedModel = sanitizeModelName(result[modelKey]);
-        const updates = { [cacheKey]: models };
-
-        // Check if selected model is missing OR no longer on the list of available models
-        if (!selectedModel || !models.includes(selectedModel)) {
-          selectedModel = pickBestModel(provider, models);
-          updates[modelKey] = selectedModel;
-        }
-
-        chrome.storage.local.set(updates);
-
-        sendResponse({ ok: true, models, selectedModel });
-      } catch (err) {
-        console.error("❌ Failed to fetch models:", err);
-        sendResponse({ ok: false, error: err.message });
-      }
-    });
-
+    handleFetchAvailableModels(message, sendResponse);
     return true; // Keep message channel open for async response
   }
 });
+
+function handleAskAI(message, sendResponse) {
+  console.log("💬 Received ChatGPT request");
+  console.log("📌 Full sentence:", message.sentence);
+  console.log("🔍 Marked part:", message.marked);
+
+  const { sentence, marked, index } = message;
+
+  const prompt = marked
+    ? explainWordPrompt(sentence, marked, index)
+    : explainSentencePrompt(sentence);
+
+  console.log("📝 Prompt created:", prompt);
+
+  chrome.storage.local.get(
+    ["providerAI", "openaiApiKey", "geminiApiKey", "openaiModel", "geminiModel", "cachedOpenaiModels", "cachedGeminiModels"],
+    async (result) => {
+      let provider = result["providerAI"];
+      if (!provider) {
+        provider = PROVIDERS.openAI; // default
+        chrome.storage.local.set({ providerAI: provider });
+      }
+
+      const modelKey = provider === PROVIDERS.gemini ? "geminiModel" : "openaiModel";
+      const cacheKey = provider === PROVIDERS.gemini ? "cachedGeminiModels" : "cachedOpenaiModels";
+      const rawApiKey = provider === PROVIDERS.gemini
+        ? (result["geminiApiKey"] || (typeof GEMINI_API_KEY !== "undefined" ? GEMINI_API_KEY : ""))
+        : (result["openaiApiKey"] || (typeof OPENAI_API_KEY !== "undefined" ? OPENAI_API_KEY : ""));
+      const apiKey = sanitizeApiKey(rawApiKey);
+
+      if (!apiKey) {
+        sendResponse({ ok: false, reply: `❌ Error you didn't provide key for ${provider}` });
+        return;
+      }
+
+      let model = sanitizeModelName(result[modelKey]);
+      let cachedModels = result[cacheKey];
+
+      // If no model has been selected yet, or if cached models are missing, prefetch models now!
+      if (!model || !cachedModels || cachedModels.length === 0) {
+        try {
+          console.log(`🔍 Prefetching available models for ${provider}...`);
+          const liveModels = await fetchLiveModels(provider, apiKey);
+          if (liveModels && liveModels.length > 0) {
+            cachedModels = liveModels;
+            const updates = { [cacheKey]: liveModels };
+            if (!model || !liveModels.includes(model)) {
+              model = pickBestModel(provider, liveModels);
+              updates[modelKey] = model;
+              console.log(`✅ Selected and saved model for ${provider}: ${model}`);
+            }
+            chrome.storage.local.set(updates);
+          }
+        } catch (err) {
+          console.warn(`⚠️ Could not prefetch models for ${provider}:`, err);
+        }
+      }
+
+      // Ensure selected model is still available in the cached models list; otherwise pick a new one
+      if (!model || (cachedModels && cachedModels.length > 0 && !cachedModels.includes(model))) {
+        model = pickBestModel(provider, cachedModels || []);
+        chrome.storage.local.set({ [modelKey]: model });
+      }
+
+      let url = "";
+      let options = {};
+      if (provider === PROVIDERS.openAI) {
+        url = "https://api.openai.com/v1/chat/completions";
+        options = {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.5
+          })
+        };
+      } else if (provider === PROVIDERS.gemini) {
+        model = model.replace(/^models\//, "");
+        url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+        options = {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-goog-api-key": apiKey
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: prompt
+                  }
+                ]
+              }
+            ]
+          })
+        };
+      }
+
+      console.log("📤 Sending request to", provider, "API with model:", model);
+
+      fetch(url, options)
+        .then(res => handleResponse(res, sendResponse, provider))
+        .catch(err => {
+          console.error("❌ ", provider, "error:", err);
+          sendResponse({ ok: false, reply: `❌ Error contacting ${provider}.` });
+        });
+    }
+  );
+}
+
+function handleFetchJisho(message, sendResponse) {
+  const url = `https://jisho.org/search/${encodeURIComponent(message.word)}`;
+  fetch(url)
+    .then((response) => {
+      if (!response.ok) {
+        return Promise.reject({ status: response.status });
+      }
+      return response.text();
+    })
+    .then((html) => {
+      sendResponse({ ok: true, reply: html });
+    })
+    .catch((error) => {
+      if (error.status) {
+        sendResponse({ ok: false, reply: `❌ Failed to load Jisho, status: ${error.status}` });
+      } else {
+        sendResponse({ ok: false, reply: error.message });
+      }
+    });
+}
+
+function handleFetchAvailableModels(message, sendResponse) {
+  const provider = message.provider;
+  chrome.storage.local.get(["openaiApiKey", "geminiApiKey", "openaiModel", "geminiModel"], async (result) => {
+    try {
+      const rawApiKey = provider === PROVIDERS.gemini
+        ? (result["geminiApiKey"] || (typeof GEMINI_API_KEY !== "undefined" ? GEMINI_API_KEY : ""))
+        : (result["openaiApiKey"] || (typeof OPENAI_API_KEY !== "undefined" ? OPENAI_API_KEY : ""));
+      const apiKey = sanitizeApiKey(rawApiKey);
+
+      if (!apiKey) {
+        sendResponse({ ok: false, error: `No ${provider} API key found.`, noKey: true });
+        return;
+      }
+
+      const models = await fetchLiveModels(provider, apiKey);
+      const modelKey = provider === PROVIDERS.gemini ? "geminiModel" : "openaiModel";
+      const cacheKey = provider === PROVIDERS.gemini ? "cachedGeminiModels" : "cachedOpenaiModels";
+      let selectedModel = sanitizeModelName(result[modelKey]);
+      const updates = { [cacheKey]: models };
+
+      // Check if selected model is missing OR no longer on the list of available models
+      if (!selectedModel || !models.includes(selectedModel)) {
+        selectedModel = pickBestModel(provider, models);
+        updates[modelKey] = selectedModel;
+      }
+
+      chrome.storage.local.set(updates);
+
+      sendResponse({ ok: true, models, selectedModel });
+    } catch (err) {
+      console.error("❌ Failed to fetch models:", err);
+      sendResponse({ ok: false, error: err.message });
+    }
+  });
+}
 
 async function handleResponse(res, sendResponse, provider) {
   console.log("📬 Received response. Status:", res.status);
