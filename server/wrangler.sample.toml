@@ -1,0 +1,11 @@
+# Copy this file to server/wrangler.toml (which is gitignored) and fill in your values.
+name = "japanese-grammar-server"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+workers_dev = true
+account_id = "YOUR_CLOUDFLARE_ACCOUNT_ID"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "reading-assistant-db"
+database_id = "YOUR_D1_DATABASE_ID"

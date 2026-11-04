@@ -200,7 +200,7 @@ function logJishoCacheSize() {
 
 function sanitizeApiKey(key) {
   if (typeof key !== "string") return "";
-  return key.trim().replace(/[\s\r\n\t\x00-\x1F\x7F-\x9F]/g, "").slice(0, 256);
+  return key.trim().replace(/[\s\r\n\t\x00-\x1F\x7F-\x9F]/g, "").slice(0, 512);
 }
 
 function sanitizeModelName(model) {

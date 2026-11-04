@@ -1,6 +1,7 @@
 const PROVIDERS = {
   openAI: "openai",
-  gemini: "gemini"
+  gemini: "gemini",
+  server: "server"
 };
 
 // Make it global for non-module scripts

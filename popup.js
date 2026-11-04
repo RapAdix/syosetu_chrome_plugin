@@ -250,15 +250,17 @@ saveApiKeyButton.addEventListener("click", () => {
   }
   
   const provider = providerSelect.value;
-  const modelKey = getModelStorageKey(provider);
-  const rawModel = modelSelect.value === "__custom__"
-    ? customModelInput.value
-    : modelSelect.value;
-  const currentModel = sanitizeModelName(rawModel);
-  if (currentModel) {
-    keys[modelKey] = currentModel;
-    if (modelSelect.value === "__custom__") {
-      customModelInput.value = currentModel;
+  if (provider !== PROVIDERS.server) {
+    const modelKey = getModelStorageKey(provider);
+    const rawModel = modelSelect.value === "__custom__"
+      ? customModelInput.value
+      : modelSelect.value;
+    const currentModel = sanitizeModelName(rawModel);
+    if (currentModel) {
+      keys[modelKey] = currentModel;
+      if (modelSelect.value === "__custom__") {
+        customModelInput.value = currentModel;
+      }
     }
   }
 
@@ -271,7 +273,7 @@ saveApiKeyButton.addEventListener("click", () => {
     statusMessage.textContent = "API key & model saved!";
     if (openaiKey) fetchModelsFromProvider(PROVIDERS.openAI, false);
     if (geminiKey) fetchModelsFromProvider(PROVIDERS.gemini, false);
-    if (!openaiKey && !geminiKey) fetchModelsFromProvider(provider, false);
+    if (!openaiKey && !geminiKey && provider !== PROVIDERS.server) fetchModelsFromProvider(provider, false);
     setTimeout(() => (statusMessage.textContent = ""), 2000);
   });
 });
@@ -289,6 +291,16 @@ const modelSelect = document.getElementById("modelSelect");
 const customModelInput = document.getElementById("customModelInput");
 const refreshModelsBtn = document.getElementById("refreshModelsBtn");
 const modelStatusNotice = document.getElementById("modelStatusNotice");
+
+const modelSection = document.getElementById("modelSection");
+const serverAuthSection = document.getElementById("serverAuthSection");
+const serverLoginForm = document.getElementById("serverLoginForm");
+const serverUsernameInput = document.getElementById("serverUsernameInput");
+const serverPasswordInput = document.getElementById("serverPasswordInput");
+const serverLoginButton = document.getElementById("serverLoginButton");
+const serverLoggedInView = document.getElementById("serverLoggedInView");
+const serverStatusText = document.getElementById("serverStatusText");
+const serverLogoutButton = document.getElementById("serverLogoutButton");
 
 function showModelNotice(msg) {
   if (modelStatusNotice) {
@@ -383,7 +395,33 @@ function loadProviderModelsAndSelection(provider, fetchLive = false) {
   });
 }
 
+function updateProviderView(provider, fetchLive = false) {
+  if (provider === PROVIDERS.server) {
+    if (modelSection) modelSection.style.display = "none";
+    if (serverAuthSection) serverAuthSection.style.display = "block";
+    hideModelNotice();
+
+    chrome.storage.local.get(["serverUsername", "serverAuthToken"], (res) => {
+      if (serverUsernameInput) serverUsernameInput.value = res.serverUsername || "";
+
+      if (res.serverAuthToken && res.serverUsername) {
+        if (serverLoginForm) serverLoginForm.style.display = "none";
+        if (serverLoggedInView) serverLoggedInView.style.display = "block";
+        if (serverStatusText) serverStatusText.textContent = "Logged in as: " + res.serverUsername;
+      } else {
+        if (serverLoginForm) serverLoginForm.style.display = "block";
+        if (serverLoggedInView) serverLoggedInView.style.display = "none";
+      }
+    });
+  } else {
+    if (modelSection) modelSection.style.display = "block";
+    if (serverAuthSection) serverAuthSection.style.display = "none";
+    loadProviderModelsAndSelection(provider, fetchLive);
+  }
+}
+
 function fetchModelsFromProvider(provider, isManual = false) {
+  if (provider === PROVIDERS.server) return;
   const isCurrentProvider = providerSelect.value === provider;
   const icon = (isCurrentProvider && refreshModelsBtn) ? refreshModelsBtn.querySelector("i") : null;
   if (icon) icon.classList.add("fa-spin");
@@ -498,6 +536,49 @@ if (refreshModelsBtn) {
   });
 }
 
+if (serverLoginButton) {
+  serverLoginButton.addEventListener("click", () => {
+    const username = serverUsernameInput ? serverUsernameInput.value.trim() : "";
+    const password = serverPasswordInput ? serverPasswordInput.value : "";
+
+    serverLoginButton.disabled = true;
+    chrome.runtime.sendMessage(
+      { type: "serverLogin", username, password },
+      (response) => {
+        serverLoginButton.disabled = false;
+        if (chrome.runtime.lastError) {
+          statusMessage.textContent = "❌ " + chrome.runtime.lastError.message;
+          setTimeout(() => { statusMessage.textContent = ""; }, 3000);
+          return;
+        }
+        if (response && response.ok) {
+          if (serverPasswordInput) serverPasswordInput.value = "";
+          if (serverLoginForm) serverLoginForm.style.display = "none";
+          if (serverLoggedInView) serverLoggedInView.style.display = "block";
+          if (serverStatusText) serverStatusText.textContent = "Logged in as: " + response.username;
+          statusMessage.textContent = "✅ Logged in!";
+          setTimeout(() => { statusMessage.textContent = ""; }, 2500);
+        } else {
+          statusMessage.textContent = "❌ " + (response && response.error ? response.error : "Login failed");
+          setTimeout(() => { statusMessage.textContent = ""; }, 3500);
+        }
+      }
+    );
+  });
+}
+
+if (serverLogoutButton) {
+  serverLogoutButton.addEventListener("click", () => {
+    chrome.storage.local.remove(["serverAuthToken", "serverUsername"], () => {
+      if (serverLoginForm) serverLoginForm.style.display = "block";
+      if (serverLoggedInView) serverLoggedInView.style.display = "none";
+      if (serverPasswordInput) serverPasswordInput.value = "";
+      statusMessage.textContent = "Logged out.";
+      setTimeout(() => { statusMessage.textContent = ""; }, 2000);
+    });
+  });
+}
+
 // Clear any existing options
 providerSelect.innerHTML = "";
 
@@ -515,7 +596,7 @@ chrome.storage.local.get("providerAI", ({ providerAI }) => {
   if (!providerAI) {
     safeSetToStorage({ providerAI: PROVIDERS.openAI });
   }
-  loadProviderModelsAndSelection(currentProvider, false);
+  updateProviderView(currentProvider, false);
 });
 
 // Save providerAI when changed and update models
@@ -525,7 +606,7 @@ providerSelect.addEventListener("change", () => {
   safeSetToStorage({ providerAI: selected }, () => {
     console.log("✅ providerAI saved:", selected);
   });
-  loadProviderModelsAndSelection(selected, false);
+  updateProviderView(selected, false);
 });
 
 
@@ -540,9 +621,11 @@ apiSettingsButton.addEventListener("click", () => {
   mainMenu.style.display = "none";
   apiSettings.style.display = "block";
   document.body.style.width = "200px";
-  loadProviderModelsAndSelection(providerSelect.value, true);
-  const otherProvider = providerSelect.value === PROVIDERS.gemini ? PROVIDERS.openAI : PROVIDERS.gemini;
-  fetchModelsFromProvider(otherProvider, false);
+  updateProviderView(providerSelect.value, true);
+  if (providerSelect.value !== PROVIDERS.server) {
+    const otherProvider = providerSelect.value === PROVIDERS.gemini ? PROVIDERS.openAI : PROVIDERS.gemini;
+    fetchModelsFromProvider(otherProvider, false);
+  }
 });
 
 backButton.addEventListener("click", () => {

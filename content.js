@@ -283,6 +283,8 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
       }
     });
   }
+  // bug 
+  // ハジメはもう一度、内心で「なにやってんだか」と自分に呆れつつ、何事にも例外は付きものと割り切って、「やりたいようにやる！」と開き直った。
 
   function showCachedWords(cachedWords) {
     const container = document.getElementById("cached-words");

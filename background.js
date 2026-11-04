@@ -18,13 +18,20 @@
  * See LICENSE-COMMERCIAL.txt for details.
  */
 
-importScripts("defaults.js", "helpers.js");
+importScripts("defaults.js", "helpers.js", "prompts.js");
 
 try {
   importScripts("secrets.js");
   console.log("✅ secrets.js loaded");
 } catch (err) {
   console.info("⚠️ secrets.js not found, continuing without it");
+}
+
+try {
+  importScripts("server_config.js");
+  console.log("✅ server_config.js loaded");
+} catch (err) {
+  console.info("⚠️ server_config.js not found, continuing without it");
 }
 
 function filterProviderModels(provider, data) {
@@ -111,6 +118,11 @@ async function fetchLiveModels(provider, apiKey) {
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === "serverLogin") {
+    handleServerLogin(message, sendResponse);
+    return true;
+  }
+
   if (message.type === "askAI") {
     handleAskAI(message, sendResponse);
     return true; // Required for async response
@@ -127,6 +139,47 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
+async function handleServerLogin(message, sendResponse) {
+  try {
+    const rawUrl = (typeof SERVER_URL !== "undefined" ? SERVER_URL : "").trim().replace(/\/+$/, "");
+    if (!rawUrl) {
+      sendResponse({ ok: false, error: "SERVER_URL is not set in server_config.js." });
+      return;
+    }
+    if (!message.username || !message.username.trim()) {
+      sendResponse({ ok: false, error: "Username is required." });
+      return;
+    }
+    if (!message.password) {
+      sendResponse({ ok: false, error: "Password is required." });
+      return;
+    }
+
+    const res = await fetch(`${rawUrl}/api/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: message.username.trim(), password: message.password })
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.ok && data.token) {
+      const username = data.username || message.username;
+      const updates = {
+        serverAuthToken: data.token,
+        serverUsername: username
+      };
+      chrome.storage.local.set(updates, () => {
+        sendResponse({ ok: true, username: username });
+      });
+    } else {
+      sendResponse({ ok: false, error: data?.error || ("Login failed (" + res.status + ")") });
+    }
+  } catch (err) {
+    console.error("❌ Server login error:", err);
+    sendResponse({ ok: false, error: err.message || "Failed to connect to server" });
+  }
+}
+
 function handleAskAI(message, sendResponse) {
   console.log("💬 Received ChatGPT request");
   console.log("📌 Full sentence:", message.sentence);
@@ -134,20 +187,63 @@ function handleAskAI(message, sendResponse) {
 
   const { sentence, marked, index } = message;
 
-  const prompt = marked
-    ? explainWordPrompt(sentence, marked, index)
-    : explainSentencePrompt(sentence);
-
-  console.log("📝 Prompt created:", prompt);
-
   chrome.storage.local.get(
-    ["providerAI", "openaiApiKey", "geminiApiKey", "openaiModel", "geminiModel", "cachedOpenaiModels", "cachedGeminiModels"],
+    ["providerAI", "openaiApiKey", "geminiApiKey", "openaiModel", "geminiModel", "cachedOpenaiModels", "cachedGeminiModels", "serverAuthToken"],
     async (result) => {
       let provider = result["providerAI"];
       if (!provider) {
         provider = PROVIDERS.openAI; // default
         chrome.storage.local.set({ providerAI: provider });
       }
+
+      if (provider === PROVIDERS.server) {
+        const baseUrl = (typeof SERVER_URL !== "undefined" ? SERVER_URL : "").trim().replace(/\/+$/, "");
+        if (!baseUrl) {
+          sendResponse({ ok: false, reply: "❌ SERVER_URL is not configured in server_config.js." });
+          return;
+        }
+        if (!result.serverAuthToken) {
+          sendResponse({ ok: false, reply: "❌ Please log in to the server in settings first." });
+          return;
+        }
+
+        console.log("📤 Sending request to Server API:", baseUrl);
+        try {
+          const res = await fetch(`${baseUrl}/api/grammar`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer " + result.serverAuthToken
+            },
+            body: JSON.stringify({ sentence, marked, index })
+          });
+
+          const data = await res.json().catch(() => ({}));
+          if (res.status === 401) {
+            sendResponse({ ok: false, reply: "⚠️ Session expired or unauthorized. Please log in again in settings." });
+            return;
+          }
+          if (res.status === 429) {
+            sendResponse({ ok: false, reply: "⚠️ " + (data?.error || "Daily server quota reached.") });
+            return;
+          }
+          if (!res.ok || !data.ok) {
+            sendResponse({ ok: false, reply: "⚠️ " + (data?.error || "Server error " + res.status) });
+            return;
+          }
+          sendResponse({ ok: true, reply: data.reply });
+        } catch (err) {
+          console.error("❌ Server error:", err);
+          sendResponse({ ok: false, reply: "❌ Error contacting server: " + err.message });
+        }
+        return;
+      }
+
+      const prompt = marked
+        ? explainWordPrompt(sentence, marked, index)
+        : explainSentencePrompt(sentence);
+
+      console.log("📝 Prompt created:", prompt);
 
       const modelKey = provider === PROVIDERS.gemini ? "geminiModel" : "openaiModel";
       const cacheKey = provider === PROVIDERS.gemini ? "cachedGeminiModels" : "cachedOpenaiModels";
@@ -264,6 +360,10 @@ function handleFetchJisho(message, sendResponse) {
 
 function handleFetchAvailableModels(message, sendResponse) {
   const provider = message.provider;
+  if (provider === PROVIDERS.server) {
+    sendResponse({ ok: true, models: [], selectedModel: "auto" });
+    return;
+  }
   chrome.storage.local.get(["openaiApiKey", "geminiApiKey", "openaiModel", "geminiModel"], async (result) => {
     try {
       const rawApiKey = provider === PROVIDERS.gemini
@@ -342,38 +442,5 @@ async function handleResponse(res, sendResponse, provider) {
     console.warn("⚠️ No response content found in API data.");
     sendResponse({ ok: false, reply: `⚠️ No response from ${provider} API.` });
   }
-}
-
-function dedent(str) {
-    return str.replace(/^\s+/gm, '');
-}
-
-function explainWordPrompt(sentence, marked, index) {
-  return dedent(`
-    In the following Japanese sentence:
-    「${sentence}」
-
-    Focus only on the marked word: 「${marked}」 at index: ${index}
-
-    For a non-beginner person learning japanese, please provide:
-    1. A brief explanation of its meaning and grammatical role, with focus on grammar rules it follows and combines.
-    2. Nuance about why this specific word is used if not obvious from previous point.
-    3. A natural English translation of the full sentence, that preserves the original modifier/syntactic relationships. No justification
-
-    Skip task introduction, be concise, especially shorten easy parts.
-  `);
-}
-
-function explainSentencePrompt(sentence) {
-  return dedent(`
-    Break down the following Japanese sentence into its grammar parts step-by-step. For each part, list:
-    - The Japanese phrase with romaji and grammatical function of each part (particle, adjective, potential/negative verb, etc.)
-    - Concise meaning in English
-    Show how the parts connect together into bigger english meaning - make it in steps if the phrase is long and rich gramatically.
-
-    no headings, be to the point. In a structured list.
-
-    Sentence: 「${sentence}」
-  `);
 }
 

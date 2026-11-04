@@ -97,11 +97,31 @@
         <select class="settings-field" id="providerSelect"></select>
       </div>
 
-      <div>
+      <div id="modelSection">
         <label>Model:</label>
         <select class="settings-field" id="modelSelect"></select>
         <input type="text" id="customModelInput" placeholder="Enter custom model..." class="settings-field" style="display: none; margin-top: 4px;" />
         <div id="modelStatusNotice" style="font-size: 11px; color: #c5221f; margin-top: 4px; display: none;"></div>
+      </div>
+
+      <div id="serverAuthSection" style="display: none; margin-top: 6px;">
+        <div id="serverLoginForm">
+          <div>
+            <label>Username:</label>
+            <input type="text" id="serverUsernameInput" placeholder="Username" class="settings-field" />
+          </div>
+          <div style="margin-top: 4px;">
+            <label>Password:</label>
+            <input type="password" id="serverPasswordInput" placeholder="Password" class="settings-field" />
+          </div>
+          <button class="settings-action-btn" id="serverLoginButton" style="margin-top: 6px;">Log In</button>
+        </div>
+
+        <div id="serverLoggedInView" style="display: none; margin-top: 6px;">
+          <div id="serverStatusText" style="font-size: 12px; font-weight: bold; color: #188038; margin-bottom: 4px;"></div>
+          <div style="font-size: 11px; color: #555; margin-bottom: 6px;">Model: Auto (set on server)</div>
+          <button class="settings-action-btn" id="serverLogoutButton">Log Out</button>
+        </div>
       </div>
 
       <button class="settings-action-btn" id="saveKeys">Save Keys</button>
