@@ -152,6 +152,7 @@ clearCacheButton.addEventListener("click", () => {
     );
 
     keysToDelete.push("jisho_cache_list");
+    keysToDelete.push("grammar_cache_list");
 
     if (keysToDelete.length === 0) {
       console.log("No grammar cache keys to delete.");

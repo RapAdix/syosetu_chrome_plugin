@@ -18,11 +18,115 @@
  * See LICENSE-COMMERCIAL.txt for details.
  */
 
+const MAX_GRAMMAR_CACHE = 100;
+
 let storageQueue = Promise.resolve();
 
 function serializeStorageOperation(op) {
   storageQueue = storageQueue.then(op).catch(()=>{});
   return storageQueue;
+}
+
+function safeSetGrammarCache(cacheKey, reply, onSuccess, onFailure) {
+  serializeStorageOperation(() =>
+    new Promise((resolve) => {
+      chrome.storage.local.get("grammar_cache_list", (res) => {
+        const handleList = (existingList) => {
+          let trimmedList = (existingList || []).filter((k) => k !== cacheKey);
+
+          let keysToRemove = [];
+          if (trimmedList.length >= MAX_GRAMMAR_CACHE) {
+            keysToRemove = trimmedList.splice(MAX_GRAMMAR_CACHE - 1);
+          }
+
+          const finishSave = (baseList) => {
+            const finalList = [cacheKey, ...baseList];
+            attemptSet(
+              {
+                [cacheKey]: reply,
+                grammar_cache_list: finalList,
+              },
+              () => {
+                console.log('💾 Cached grammar response for:', cacheKey);
+                if (onSuccess) onSuccess();
+                resolve();
+              },
+              () => {
+                if (typeof alert !== "undefined") alert('❌ Cache is full. Cannot save new response.');
+                if (onFailure) onFailure();
+                resolve();
+              },
+              4
+            );
+          };
+
+          if (keysToRemove.length > 0) {
+            console.log(`🗑️ Pruning ${keysToRemove.length} oldest grammar cache entries.`);
+            chrome.storage.local.remove(keysToRemove, () => {
+              chrome.storage.local.set({ grammar_cache_list: trimmedList }, () => {
+                if (chrome.runtime.lastError) {
+                  console.warn("⚠️ Replacing grammar_cache_list after pruning failed. Performing tidy-up.");
+                  tidyGrammarList(() => {
+                    chrome.storage.local.get("grammar_cache_list", (r) => {
+                      finishSave((r.grammar_cache_list || []).filter((k) => k !== cacheKey));
+                    });
+                  });
+                } else {
+                  finishSave(trimmedList);
+                }
+              });
+            });
+          } else {
+            finishSave(trimmedList);
+          }
+        };
+
+        if (res.grammar_cache_list) {
+          handleList(res.grammar_cache_list);
+        } else {
+          // Backward compatibility: bootstrap list from any existing grammar keys in storage
+          chrome.storage.local.get(null, (allItems) => {
+            const existingKeys = Object.keys(allItems || {}).filter(
+              (k) => k.startsWith("explain_word|") || k.startsWith("explain_sentence|")
+            );
+            handleList(existingKeys);
+          });
+        }
+      });
+    })
+  );
+}
+
+function removeGrammarCacheKey(cacheKey, callback) {
+  serializeStorageOperation(() =>
+    new Promise((resolve) => {
+      chrome.storage.local.get("grammar_cache_list", (res) => {
+        if (!Array.isArray(res.grammar_cache_list)) {
+          chrome.storage.local.remove(cacheKey, () => {
+            if (callback) callback();
+            resolve();
+          });
+          return;
+        }
+
+        let list = res.grammar_cache_list.filter((k) => k !== cacheKey);
+        chrome.storage.local.remove(cacheKey, () => {
+          chrome.storage.local.set({ grammar_cache_list: list }, () => {
+            if (chrome.runtime.lastError) {
+              console.warn("⚠️ Replacing grammar_cache_list failed. Performing removal of headless grammar cache.");
+              tidyGrammarList(() => {
+                if (callback) callback();
+                resolve();
+              });
+            } else {
+              if (callback) callback();
+              resolve();
+            }
+          });
+        });
+      });
+    })
+  );
 }
 
 function safeSetToStorageWithList(cacheKey, html) {
@@ -78,6 +182,7 @@ function attemptSet(data, onSuccess, onFailure, remainingRetries) {
       if (remainingRetries === 2) {
         console.debug(`Performing tiding cause a lot of errors with cache`);
         await new Promise(tidyJishoList); // Two last chances for set. Maybe some desynchronized cache<->list so make a clear.
+        await new Promise(tidyGrammarList);
       }
       if (remainingRetries <= 0) {
         console.error("❌ Failed to save cache even after trimming.");
@@ -95,6 +200,20 @@ function attemptSet(data, onSuccess, onFailure, remainingRetries) {
             list = list.filter((w) => w !== cacheKey); // Remove word if already in list
             list.unshift(cacheKey); // Add to front (most recent)
             data = { ...data, jisho_cache_list: list };
+            attemptSet(data, onSuccess, onFailure, remainingRetries - 1);
+          });
+        } else if (data.grammar_cache_list) {
+          chrome.storage.local.get("grammar_cache_list", (res) => {
+            let list;
+            if (Array.isArray(res.grammar_cache_list)) {
+              const keys = Object.keys(data);
+              const cacheKey = keys.find(key => key !== 'grammar_cache_list');
+              list = res.grammar_cache_list.filter((w) => w !== cacheKey);
+              list.unshift(cacheKey);
+            } else {
+              list = data.grammar_cache_list;
+            }
+            data = { ...data, grammar_cache_list: list };
             attemptSet(data, onSuccess, onFailure, remainingRetries - 1);
           });
         } else {
@@ -178,6 +297,50 @@ function tidyJishoList(callback) {
       }
     });
   })
+}
+
+function tidyGrammarList(callback) {
+  chrome.storage.local.get(null, (items) => {
+    // If grammar_cache_list does not exist yet (legacy state before any new grammar question is saved),
+    // skip tidying: we must not delete existing legacy grammar keys as "headless", nor create a new
+    // grammar_cache_list key when storage is already full (tidying should only decrease storage usage).
+    if (!items || !Array.isArray(items.grammar_cache_list)) {
+      if (callback) callback();
+      return;
+    }
+
+    const keysForGrammar = Object.keys(items).filter(
+      (k) => k.startsWith("explain_word|") || k.startsWith("explain_sentence|")
+    );
+    const list = items.grammar_cache_list;
+    const headlessCache = keysForGrammar.filter((k) => !list.includes(k));
+
+    chrome.storage.local.remove(headlessCache, () => {
+      if (headlessCache.length > 0) {
+        console.log(`While tidying removed ${headlessCache.length} forgotten grammar caches`);
+      }
+
+      const newList = list.filter((key) => keysForGrammar.includes(key));
+      const listsDiffer =
+        newList.length !== list.length || newList.some((v, i) => v !== list[i]);
+
+      if (listsDiffer) {
+        chrome.storage.local.set({ grammar_cache_list: newList }, () => {
+          if (chrome.runtime.lastError) {
+            console.warn(
+              `💥☠️ Replacing grammar_cache_list failed INSIDE the tidy-up. ` +
+                `If you are still encountering cache issues please use the button "Clear Cache" in settings`
+            );
+          } else {
+            console.log(`Tidied up grammar_cache_list, new list_length: ${newList.length}`);
+          }
+          if (callback) callback();
+        });
+      } else {
+        if (callback) callback();
+      }
+    });
+  });
 }
 
 function logJishoCacheSize() {

@@ -168,9 +168,11 @@ async function handleServerLogin(message, sendResponse) {
         serverAuthToken: data.token,
         serverUsername: username
       };
-      chrome.storage.local.set(updates, () => {
-        sendResponse({ ok: true, username: username });
-      });
+      safeSetToStorage(
+        updates,
+        () => sendResponse({ ok: true, username: username }),
+        () => sendResponse({ ok: false, error: "Storage is full. Cannot save login session." })
+      );
     } else {
       sendResponse({ ok: false, error: data?.error || ("Login failed (" + res.status + ")") });
     }
@@ -193,7 +195,11 @@ function handleAskAI(message, sendResponse) {
       let provider = result["providerAI"];
       if (!provider) {
         provider = PROVIDERS.openAI; // default
-        chrome.storage.local.set({ providerAI: provider });
+        safeSetToStorage(
+          { providerAI: provider },
+          () => {},
+          () => console.warn("⚠️ Could not save default providerAI to storage.")
+        );
       }
 
       if (provider === PROVIDERS.server) {
@@ -273,7 +279,16 @@ function handleAskAI(message, sendResponse) {
               updates[modelKey] = model;
               console.log(`✅ Selected and saved model for ${provider}: ${model}`);
             }
-            chrome.storage.local.set(updates);
+            await new Promise((resolve) =>
+              safeSetToStorage(
+                updates,
+                resolve,
+                () => {
+                  console.warn(`⚠️ Could not cache models for ${provider} in storage.`);
+                  resolve();
+                }
+              )
+            );
           }
         } catch (err) {
           console.warn(`⚠️ Could not prefetch models for ${provider}:`, err);
@@ -283,7 +298,16 @@ function handleAskAI(message, sendResponse) {
       // Ensure selected model is still available in the cached models list; otherwise pick a new one
       if (!model || (cachedModels && cachedModels.length > 0 && !cachedModels.includes(model))) {
         model = pickBestModel(provider, cachedModels || []);
-        chrome.storage.local.set({ [modelKey]: model });
+        await new Promise((resolve) =>
+          safeSetToStorage(
+            { [modelKey]: model },
+            resolve,
+            () => {
+              console.warn(`⚠️ Could not save fallback model for ${provider} in storage.`);
+              resolve();
+            }
+          )
+        );
       }
 
       let url = "";
@@ -388,9 +412,14 @@ function handleFetchAvailableModels(message, sendResponse) {
         updates[modelKey] = selectedModel;
       }
 
-      chrome.storage.local.set(updates);
-
-      sendResponse({ ok: true, models, selectedModel });
+      safeSetToStorage(
+        updates,
+        () => sendResponse({ ok: true, models, selectedModel }),
+        () => {
+          console.warn(`⚠️ Could not save fetched models for ${provider} to storage.`);
+          sendResponse({ ok: true, models, selectedModel });
+        }
+      );
     } catch (err) {
       console.error("❌ Failed to fetch models:", err);
       sendResponse({ ok: false, error: err.message });

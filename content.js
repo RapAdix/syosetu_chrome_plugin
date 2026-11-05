@@ -343,7 +343,7 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
     resultElement.textContent = content;
     const deleteBtn = createFaDeleteButton(() => {
       console.debug(message);
-      chrome.storage.local.remove(key, () => {
+      removeGrammarCacheKey(key, () => {
         if (chrome.runtime.lastError) {
           console.error("Error removing key:", chrome.runtime.lastError);
           return;
@@ -369,8 +369,8 @@ chrome.storage.local.get("jishoEnabled", ({ jishoEnabled }) => {
         const responseBox = document.getElementById("grammar-response");
 
         if (res.ok) {
-          safeSetToStorage({ [cacheKey]: res.reply }, 
-            () => { console.log('💾 Cached response for:', cacheKey); updateGPTPanel(); }, 
+          safeSetGrammarCache(cacheKey, res.reply, 
+            () => { updateGPTPanel(); }, 
             () => { alert('❌ Cache is full. Cannot save new response.'); updateGPTPanel(); }
           );
         } else {
