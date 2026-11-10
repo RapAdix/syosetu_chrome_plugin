@@ -23,6 +23,23 @@ const DEFAULTS = window.JishoDefaults;
 const toggle = document.getElementById("jishoSwitch");
 const clearCacheButton = document.getElementById("clearCacheButton");
 const statusMessage = document.getElementById("statusMessage");
+let statusTimerId = null;
+
+function setStatusMessage(msg, { isError = false, timeoutMs = 0 } = {}) {
+  if (statusTimerId) {
+    clearTimeout(statusTimerId);
+    statusTimerId = null;
+  }
+  statusMessage.textContent = msg;
+  statusMessage.classList.toggle("status-error", isError && Boolean(msg));
+  if (timeoutMs > 0 && msg) {
+    statusTimerId = setTimeout(() => {
+      statusMessage.textContent = "";
+      statusMessage.classList.remove("status-error");
+      statusTimerId = null;
+    }, timeoutMs);
+  }
+}
 const deleteKeysButton = document.getElementById("deleteKeys");
 
 // Settings inputs
@@ -163,8 +180,7 @@ clearCacheButton.addEventListener("click", () => {
       if (chrome.runtime.lastError) {
         console.error("Error removing cache keys:", chrome.runtime.lastError);
       } else {
-        statusMessage.textContent = "grammar cache cleared!";
-        setTimeout(() => { statusMessage.textContent = ""; }, 2000);
+        setStatusMessage("grammar cache cleared!", { timeoutMs: 2000 });
       }
     });
   });
@@ -173,15 +189,15 @@ clearCacheButton.addEventListener("click", () => {
 deleteKeysButton.addEventListener("click", () => {
   chrome.storage.local.remove(["openaiApiKey", "geminiApiKey"], () => {
     if (chrome.runtime.lastError) {
-        console.error("Error removing AI keys:", chrome.runtime.lastError);
-      } else {
-        statusMessage.textContent = "AI keys deleted!";
-        openaiApiKeyInput.value = "";
-        geminiApiKeyInput.value = "";
-        setTimeout(() => { statusMessage.textContent = ""; }, 2000);
-      }
+      console.error("Error removing AI keys:", chrome.runtime.lastError);
+    } else {
+      setStatusMessage("AI keys deleted!", { timeoutMs: 2000 });
+      openaiApiKeyInput.value = "";
+      geminiApiKeyInput.value = "";
+      syncProviderSelection(false);
+    }
   });
-})
+});
 
 // Reset panel settings
 resetButton.addEventListener("click", () => {
@@ -194,8 +210,7 @@ resetButton.addEventListener("click", () => {
     jishoScaleInput.value = DEFAULTS.jishoContentScale;
     grammarScaleInput.value = DEFAULTS.grammarContentScale;
 
-    statusMessage.textContent = "🔄 Reset to defaults.";
-    setTimeout(() => { statusMessage.textContent = ""; }, 2000);
+    setStatusMessage("🔄 Reset to defaults.", { timeoutMs: 2000 });
   });
 });
 
@@ -266,16 +281,21 @@ saveApiKeyButton.addEventListener("click", () => {
   }
 
   if (!Object.keys(keys).length) {
-    statusMessage.textContent = "Please enter a valid API key.";
+    setStatusMessage("Please enter a valid API key.", { isError: true, timeoutMs: 2500 });
     return;
   }
 
+  // If the user switched to this provider before saving a key, persist it now that a key is provided.
+  const keyEnteredForProvider = provider === PROVIDERS.gemini ? geminiKey : openaiKey;
+  if (provider !== PROVIDERS.server && keyEnteredForProvider) {
+    keys["providerAI"] = provider;
+  }
+
   safeSetToStorage(keys, () => {
-    statusMessage.textContent = "API key & model saved!";
+    setStatusMessage("API key & model saved!", { timeoutMs: 2000 });
     if (openaiKey) fetchModelsFromProvider(PROVIDERS.openAI, false);
     if (geminiKey) fetchModelsFromProvider(PROVIDERS.gemini, false);
     if (!openaiKey && !geminiKey && provider !== PROVIDERS.server) fetchModelsFromProvider(provider, false);
-    setTimeout(() => (statusMessage.textContent = ""), 2000);
   });
 });
 
@@ -435,8 +455,7 @@ function fetchModelsFromProvider(provider, isManual = false) {
     if (chrome.runtime.lastError) {
       console.warn("fetchAvailableModels error:", chrome.runtime.lastError.message);
       if (isManual && providerSelect.value === provider) {
-        statusMessage.textContent = "Error fetching models.";
-        setTimeout(() => { statusMessage.textContent = ""; }, 2500);
+        setStatusMessage("Error fetching models.", { isError: true, timeoutMs: 2500 });
       }
       return;
     }
@@ -468,8 +487,7 @@ function fetchModelsFromProvider(provider, isManual = false) {
           if (providerSelect.value === provider) {
             renderModelDropdown(provider, response.models, currentSaved);
             if (isManual) {
-              statusMessage.textContent = `Updated ${provider} models!`;
-              setTimeout(() => { statusMessage.textContent = ""; }, 2000);
+              setStatusMessage(`Updated ${provider} models!`, { timeoutMs: 2000 });
             }
           }
         });
@@ -489,8 +507,7 @@ function fetchModelsFromProvider(provider, isManual = false) {
             showModelNotice(`⚠️ ${response.error}`);
           }
           if (isManual && response && response.error) {
-            statusMessage.textContent = response.error;
-            setTimeout(() => { statusMessage.textContent = ""; }, 3000);
+            setStatusMessage(response.error, { isError: true, timeoutMs: 3000 });
           }
         }
       });
@@ -548,8 +565,7 @@ if (serverLoginButton) {
       (response) => {
         serverLoginButton.disabled = false;
         if (chrome.runtime.lastError) {
-          statusMessage.textContent = "❌ " + chrome.runtime.lastError.message;
-          setTimeout(() => { statusMessage.textContent = ""; }, 3000);
+          setStatusMessage("❌ " + chrome.runtime.lastError.message, { isError: true, timeoutMs: 3000 });
           return;
         }
         if (response && response.ok) {
@@ -557,11 +573,9 @@ if (serverLoginButton) {
           if (serverLoginForm) serverLoginForm.style.display = "none";
           if (serverLoggedInView) serverLoggedInView.style.display = "block";
           if (serverStatusText) serverStatusText.textContent = "Logged in as: " + response.username;
-          statusMessage.textContent = "✅ Logged in!";
-          setTimeout(() => { statusMessage.textContent = ""; }, 2500);
+          setStatusMessage("✅ Logged in!", { timeoutMs: 2500 });
         } else {
-          statusMessage.textContent = "❌ " + (response && response.error ? response.error : "Login failed");
-          setTimeout(() => { statusMessage.textContent = ""; }, 3500);
+          setStatusMessage("❌ " + (response && response.error ? response.error : "Login failed"), { isError: true, timeoutMs: 3500 });
         }
       }
     );
@@ -574,8 +588,7 @@ if (serverLogoutButton) {
       if (serverLoginForm) serverLoginForm.style.display = "block";
       if (serverLoggedInView) serverLoggedInView.style.display = "none";
       if (serverPasswordInput) serverPasswordInput.value = "";
-      statusMessage.textContent = "Logged out.";
-      setTimeout(() => { statusMessage.textContent = ""; }, 2000);
+      setStatusMessage("Logged out.", { timeoutMs: 2000 });
     });
   });
 }
@@ -591,19 +604,66 @@ for (const [key, value] of Object.entries(window.Providers)) {
   providerSelect.appendChild(option);
 }
 
-chrome.storage.local.get("providerAI", ({ providerAI }) => {
-  const currentProvider = providerAI || PROVIDERS.openAI;
-  providerSelect.value = currentProvider;
-  if (!providerAI) {
-    safeSetToStorage({ providerAI: PROVIDERS.openAI });
+async function fetchConfiguredKeys() {
+  try {
+    const response = await chrome.runtime.sendMessage({ type: "getConfiguredProviders" });
+    if (response?.ok && response.configured) {
+      return response.configured;
+    }
+  } catch (err) {
+    console.warn("Could not query configured providers from background:", err);
   }
-  updateProviderView(currentProvider, false);
-});
+  const local = await chrome.storage.local.get(["openaiApiKey", "geminiApiKey"]);
+  return {
+    [PROVIDERS.openAI]: Boolean(sanitizeApiKey(local.openaiApiKey)),
+    [PROVIDERS.gemini]: Boolean(sanitizeApiKey(local.geminiApiKey)),
+  };
+}
+
+async function syncProviderSelection(fetchLive = false) {
+  const [{ providerAI }, configured] = await Promise.all([
+    chrome.storage.local.get("providerAI"),
+    fetchConfiguredKeys(),
+  ]);
+
+  const defaultProvider = getDefaultProvider(configured);
+  const isSavedValid =
+    providerAI === PROVIDERS.server ||
+    (providerAI && configured[providerAI]);
+
+  const activeProvider = isSavedValid ? providerAI : defaultProvider;
+
+  providerSelect.value = activeProvider;
+  if (providerAI !== activeProvider) {
+    safeSetToStorage({ providerAI: activeProvider });
+  }
+
+  updateProviderView(activeProvider, fetchLive);
+}
+
+syncProviderSelection(false);
 
 // Save providerAI when changed and update models
-providerSelect.addEventListener("change", () => {
+providerSelect.addEventListener("change", async () => {
   const selected = providerSelect.value;
   hideModelNotice();
+
+  if (selected === PROVIDERS.server) {
+    setStatusMessage("");
+    safeSetToStorage({ providerAI: selected });
+    updateProviderView(selected, false);
+    return;
+  }
+
+  const configured = await fetchConfiguredKeys();
+  if (!configured[selected]) {
+    const label = selected === PROVIDERS.gemini ? "Gemini" : "OpenAI";
+    setStatusMessage(`❌ No saved ${label} API key. Provider not saved.`, { isError: true });
+    updateProviderView(selected, false);
+    return;
+  }
+
+  setStatusMessage("");
   safeSetToStorage({ providerAI: selected }, () => {
     console.log("✅ providerAI saved:", selected);
   });
@@ -618,11 +678,12 @@ const backButton = document.getElementById("backToMainButton");
 const mainMenu = document.getElementById("mainMenu");
 const apiSettings = document.getElementById("apiSettings");
 
-apiSettingsButton.addEventListener("click", () => {
+apiSettingsButton.addEventListener("click", async () => {
   mainMenu.style.display = "none";
   apiSettings.style.display = "block";
   document.body.style.width = "200px";
-  updateProviderView(providerSelect.value, true);
+  setStatusMessage("");
+  await syncProviderSelection(true);
   if (providerSelect.value !== PROVIDERS.server) {
     const otherProvider = providerSelect.value === PROVIDERS.gemini ? PROVIDERS.openAI : PROVIDERS.gemini;
     fetchModelsFromProvider(otherProvider, false);
@@ -630,6 +691,7 @@ apiSettingsButton.addEventListener("click", () => {
 });
 
 backButton.addEventListener("click", () => {
+  setStatusMessage("");
   apiSettings.style.display = "none";
   mainMenu.style.display = "block";
   document.body.style.width = "auto";

@@ -329,3 +329,11 @@ input:checked + .slider::before {
   box-sizing: border-box;
 }
 
+#statusMessage.status-error {
+  color: #c5221f;
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 6px;
+}
+
+

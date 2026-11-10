@@ -123,6 +123,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === "getConfiguredProviders") {
+    handleGetConfiguredProviders(sendResponse);
+    return true;
+  }
+
   if (message.type === "askAI") {
     handleAskAI(message, sendResponse);
     return true; // Required for async response
@@ -182,6 +187,30 @@ async function handleServerLogin(message, sendResponse) {
   }
 }
 
+function getResolvedApiKey(provider, storageResult) {
+  const rawApiKey = provider === PROVIDERS.gemini
+    ? (storageResult["geminiApiKey"] || (typeof GEMINI_API_KEY !== "undefined" ? GEMINI_API_KEY : ""))
+    : (storageResult["openaiApiKey"] || (typeof OPENAI_API_KEY !== "undefined" ? OPENAI_API_KEY : ""));
+  return sanitizeApiKey(rawApiKey);
+}
+
+function getConfiguredKeyFlags(storageResult) {
+  return {
+    [PROVIDERS.openAI]: Boolean(getResolvedApiKey(PROVIDERS.openAI, storageResult)),
+    [PROVIDERS.gemini]: Boolean(getResolvedApiKey(PROVIDERS.gemini, storageResult)),
+  };
+}
+
+async function handleGetConfiguredProviders(sendResponse) {
+  try {
+    const result = await chrome.storage.local.get(["openaiApiKey", "geminiApiKey"]);
+    sendResponse({ ok: true, configured: getConfiguredKeyFlags(result) });
+  } catch (err) {
+    console.error("Failed to check configured providers:", err);
+    sendResponse({ ok: false, configured: {} });
+  }
+}
+
 function handleAskAI(message, sendResponse) {
   console.log("💬 Received ChatGPT request");
   console.log("📌 Full sentence:", message.sentence);
@@ -194,7 +223,7 @@ function handleAskAI(message, sendResponse) {
     async (result) => {
       let provider = result["providerAI"];
       if (!provider) {
-        provider = PROVIDERS.openAI; // default
+        provider = getDefaultProvider(getConfiguredKeyFlags(result));
         safeSetToStorage(
           { providerAI: provider },
           () => {},
@@ -253,10 +282,7 @@ function handleAskAI(message, sendResponse) {
 
       const modelKey = provider === PROVIDERS.gemini ? "geminiModel" : "openaiModel";
       const cacheKey = provider === PROVIDERS.gemini ? "cachedGeminiModels" : "cachedOpenaiModels";
-      const rawApiKey = provider === PROVIDERS.gemini
-        ? (result["geminiApiKey"] || (typeof GEMINI_API_KEY !== "undefined" ? GEMINI_API_KEY : ""))
-        : (result["openaiApiKey"] || (typeof OPENAI_API_KEY !== "undefined" ? OPENAI_API_KEY : ""));
-      const apiKey = sanitizeApiKey(rawApiKey);
+      const apiKey = getResolvedApiKey(provider, result);
 
       if (!apiKey) {
         sendResponse({ ok: false, reply: `❌ Error you didn't provide key for ${provider}` });
@@ -390,10 +416,7 @@ function handleFetchAvailableModels(message, sendResponse) {
   }
   chrome.storage.local.get(["openaiApiKey", "geminiApiKey", "openaiModel", "geminiModel"], async (result) => {
     try {
-      const rawApiKey = provider === PROVIDERS.gemini
-        ? (result["geminiApiKey"] || (typeof GEMINI_API_KEY !== "undefined" ? GEMINI_API_KEY : ""))
-        : (result["openaiApiKey"] || (typeof OPENAI_API_KEY !== "undefined" ? OPENAI_API_KEY : ""));
-      const apiKey = sanitizeApiKey(rawApiKey);
+      const apiKey = getResolvedApiKey(provider, result);
 
       if (!apiKey) {
         sendResponse({ ok: false, error: `No ${provider} API key found.`, noKey: true });
