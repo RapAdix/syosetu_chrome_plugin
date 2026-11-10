@@ -93,45 +93,18 @@ function timingSafeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-async function hashPassword(password: string, iterations = 100000): Promise<string> {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const keyMaterial = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(password),
-    { name: "PBKDF2" },
-    false,
-    ["deriveBits"]
-  );
-  const derivedBits = await crypto.subtle.deriveBits(
-    {
-      name: "PBKDF2",
-      salt,
-      iterations,
-      hash: "SHA-256",
-    },
-    keyMaterial,
-    256
-  );
-  return `pbkdf2$${iterations}$${toHex(salt)}$${toHex(derivedBits)}`;
-}
-
 async function verifyPassword(
   password: string,
   storedHash: string
-): Promise<{ valid: boolean; upgradedHash?: string }> {
-  if (storedHash.startsWith("plain:")) {
-    const expected = storedHash.slice("plain:".length);
-    const valid = timingSafeEqual(password, expected);
-    if (!valid) return { valid: false };
-    const upgradedHash = await hashPassword(password);
-    return { valid: true, upgradedHash };
-  }
-
+): Promise<boolean> {
   const parts = storedHash.split("$");
   if (parts.length !== 4 || parts[0] !== "pbkdf2") {
-    return { valid: false };
+    return false;
   }
   const iterations = parseInt(parts[1], 10);
+  if (!Number.isFinite(iterations) || iterations <= 0) {
+    return false;
+  }
   const salt = fromHex(parts[2]);
   const expectedHex = parts[3];
 
@@ -152,7 +125,7 @@ async function verifyPassword(
     keyMaterial,
     256
   );
-  return { valid: timingSafeEqual(toHex(derivedBits), expectedHex) };
+  return timingSafeEqual(toHex(derivedBits), expectedHex);
 }
 
 async function signJwt(payload: JwtPayload, secret: string): Promise<string> {
@@ -269,15 +242,9 @@ export default {
           return jsonResponse({ ok: false, error: "Account is disabled." }, 403);
         }
 
-        const { valid, upgradedHash } = await verifyPassword(password, user.password_hash);
+        const valid = await verifyPassword(password, user.password_hash);
         if (!valid) {
           return jsonResponse({ ok: false, error: "Invalid username or password." }, 401);
-        }
-
-        if (upgradedHash) {
-          await env.DB.prepare("UPDATE users SET password_hash = ? WHERE id = ?")
-            .bind(upgradedHash, user.id)
-            .run();
         }
 
         const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30; // 30 days
